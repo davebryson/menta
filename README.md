@@ -1,5 +1,5 @@
 # MENTA
-A simple golang framework for creating Tendermint blockchain application.
+A simple golang framework for creating Tendermint blockchain applications.
 
 Get it: `dep ensure -add github.com/davebryson/menta`
 
@@ -57,13 +57,13 @@ Here's how to test the app without running a node:
 func TestTesterBasics(t *testing.T) {
 	assert := assert.New(t)
 
-  // Expected tree hash after the transactions
+        // Expected tree hash after the transactions
 	expectedTreeHash := "cd5c39b2ff82a4fe914b095daef7becc348709c5"
 
 	// Setup app - not the use of 'NewTestApp'
 	app := menta.NewTestApp() 
   
-  // Same as the example above
+        // Same as the example above
 	app.OnGenesis(func(ctx sdk.Context, req abci.RequestInitChain) {
 		ctx.Db.Set([]byte("count"), writeNumber(0))
 	})
