@@ -35,7 +35,7 @@ func main() {
 		ctx.Db.Set([]byte("count"), writeNumber(0))
 	})
 
-	// Add you 1-many transaction callbacks (this is the abci.DeliverTx)
+	// Add 1 to many transaction callbacks (this is the abci.DeliverTx)
 	app.OnTx("counter", func(ctx sdk.Context) sdk.Result {
 		count := binary.BigEndian.Uint32(ctx.Db.Get([]byte("count")))
 		count += uint32(1)
