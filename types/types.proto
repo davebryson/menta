@@ -1,0 +1,26 @@
+syntax = "proto3";
+package types;
+
+// Transaction model across client and node
+message Transaction {
+  bytes from = 1;
+  bytes to = 2;
+  uint64 nonce = 3;
+  uint64 value = 4;
+  string call = 5;
+  bytes data = 6;
+  bytes sig = 7;
+}
+
+// State store
+message CommitInfo {
+  bytes hash = 1;
+  int64 version = 2;
+}
+
+// Account stored in state
+message AccountBytes {
+  uint64 nonce = 1;
+  uint64 balance = 2;
+  bytes pubkey_bytes = 3;
+}
