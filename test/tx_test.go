@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/hex"
 	"testing"
 
 	sdk "github.com/davebryson/menta/types"
@@ -56,4 +57,18 @@ func TestFullTx(t *testing.T) {
 	assert.Equal(uint64(2), tx2.Value)
 	assert.Equal("hello", tx2.Call)
 	assert.Equal([]byte("thepayload"), tx2.Data)
+}
+
+func TestDecodeFromApi(t *testing.T) {
+	assert := assert.New(t)
+
+	// encoded tx from menta-js client
+	raw, err := hex.DecodeString("18012a0548656c6c6f")
+	assert.Nil(err)
+
+	tx, err := sdk.TransactionFromBytes(raw)
+	assert.Nil(err)
+	assert.Equal("Hello", tx.Call)
+	assert.Equal(uint64(1), tx.Nonce)
+
 }
