@@ -17,8 +17,20 @@ type keyAsJson struct {
 	PrivateKey string `json:"privatekey"`
 }
 
+func Verify(msg, sig, pubkey []byte) bool {
+	pk, err := crypto.PubKeyFromBytes(pubkey)
+	if err != nil {
+		return false
+	}
+	signature, err := crypto.SignatureFromBytes(sig)
+	if err != nil {
+		return false
+	}
+	return pk.VerifyBytes(msg, signature)
+}
+
 func KeyFromSecret(secret []byte) *Key {
-	sk := crypto.GenPrivKeyEd25519FromSecret(crypto.Sha256(secret))
+	sk := crypto.GenPrivKeyEd25519FromSecret(secret)
 	return &Key{
 		Address:    sk.PubKey().Address(),
 		PrivateKey: sk,
