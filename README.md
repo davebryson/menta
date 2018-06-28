@@ -103,4 +103,4 @@ func TestTesterBasics(t *testing.T) {
 
 More to come.  Of course if you're looking for a more full-featured SDK, I'd recommend [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk)
 
-TODO: Upgrade to latest ABCI
+TODO: Upgrade to latest ABCI 12
