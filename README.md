@@ -61,8 +61,8 @@ func TestTesterBasics(t *testing.T) {
 	expectedTreeHash := "cd5c39b2ff82a4fe914b095daef7becc348709c5"
 
 	// Setup app - not the use of 'NewTestApp'
-	app := menta.NewTestApp() 
-  
+	app := menta.NewTestApp()
+
         // Same as the example above
 	app.OnGenesis(func(ctx sdk.Context, req abci.RequestInitChain) {
 		ctx.Db.Set([]byte("count"), writeNumber(0))
@@ -102,3 +102,5 @@ func TestTesterBasics(t *testing.T) {
 ```
 
 More to come.  Of course if you're looking for a more full-featured SDK, I'd recommend [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk)
+
+TODO: Upgrade to latest ABCI
