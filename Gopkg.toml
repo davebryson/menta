@@ -37,3 +37,7 @@
 [[constraint]]
   name = "github.com/stretchr/testify"
   version = "1.2.1"
+
+[[constraint]]
+  name = "github.com/tendermint/iavl"
+  version = "v0.9.2"
