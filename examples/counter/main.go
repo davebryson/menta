@@ -5,7 +5,7 @@ import (
 
 	menta "github.com/davebryson/menta/app"
 	sdk "github.com/davebryson/menta/types"
-	abci "github.com/tendermint/abci/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 )
 
 func writeNumber(v uint32) []byte {

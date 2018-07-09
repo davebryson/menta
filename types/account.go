@@ -2,7 +2,7 @@ package types
 
 import (
 	proto "github.com/golang/protobuf/proto"
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/tendermint/crypto"
 )
 
 type Account struct {

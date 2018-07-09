@@ -3,7 +3,7 @@ package app
 import (
 	"github.com/davebryson/menta/store"
 	sdk "github.com/davebryson/menta/types"
-	abci "github.com/tendermint/abci/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 )
 

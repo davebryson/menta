@@ -3,7 +3,7 @@ package tools
 import (
 	"github.com/davebryson/menta/app"
 	sdk "github.com/davebryson/menta/types"
-	abci "github.com/tendermint/abci/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 )
 
 // Tester - simple tool to test tx logic without tendermint

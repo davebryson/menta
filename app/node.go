@@ -3,12 +3,12 @@ package app
 import (
 	"os"
 
-	"github.com/tendermint/abci/server"
+	"github.com/tendermint/tendermint/abci/server"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/node"
+	pv "github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
-	pv "github.com/tendermint/tendermint/types/priv_validator"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
 )
 
 var (
@@ -17,15 +17,17 @@ var (
 
 func (app *MentaApp) CreateNode() *node.Node {
 	// Assumes priv validator has been generated.  See loadConfig()
-	privValFile := app.config.PrivValidatorFile()
-	privValidator := pv.LoadFilePV(privValFile)
-	papp := proxy.NewLocalClientCreator(app)
+	//privValFile := app.config.PrivValidatorFile()
+	//privValidator := pv.LoadFilePV(privValFile)
+	//papp := proxy.NewLocalClientCreator(app)
 	node, err := node.NewNode(
 		app.config,
-		privValidator,
-		papp,
+		pv.LoadOrGenFilePV(app.config.PrivValidatorFile()),
+		proxy.NewLocalClientCreator(app),
 		node.DefaultGenesisDocProviderFunc(app.config),
-		node.DefaultDBProvider, logger,
+		node.DefaultDBProvider,
+		node.DefaultMetricsProvider,
+		logger,
 	)
 	if err != nil {
 		panic(err)

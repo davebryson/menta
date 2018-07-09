@@ -2,21 +2,22 @@ package test
 
 import (
 	"encoding/hex"
+	"fmt"
 	"testing"
 
 	"github.com/davebryson/menta/types"
 	"github.com/stretchr/testify/assert"
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/tendermint/crypto"
 )
 
 const (
-	ADDY   = "a6b5dc5e1dbf3a3979b7eecf76665fdbde7a6ad6"
-	PUB    = "1624de62207559c028a191cc9e7edc41dabb8363c8ba0027ebbdffcd1749246b7d7800131f"
+	ADDY   = "afe25dec1002986616c5f00a942e3b623e2e4f42"
+	PUB    = "1624de64207559c028a191cc9e7edc41dabb8363c8ba0027ebbdffcd1749246b7d7800131f"
 	SECRET = "helloworld"
 	MSG    = "heythere"
 )
 
-// NOTE: amino prefix: 1624de6220
+// NOTE: amino pubkey prefix: 1624de6420
 
 func TestAccountStuff(t *testing.T) {
 	assert := assert.New(t)
@@ -27,6 +28,7 @@ func TestAccountStuff(t *testing.T) {
 	a, e := types.AccountFromPubKey([]byte(s))
 	assert.Nil(e)
 	assert.NotNil(a)
+
 	a.Nonce = uint64(1)
 	a.Balance = uint64(10)
 	assert.Equal(ADDY, hex.EncodeToString(a.Address()))
@@ -57,8 +59,12 @@ func TestAcctAndSigs(t *testing.T) {
 	back, err := types.AccountFromBytes(raw)
 
 	// Sign something ...
-	sigBytes := sk.Sign([]byte(MSG)).Bytes()
-	signature, err := crypto.SignatureFromBytes(sigBytes)
+	//sigBytes := sk.Sign([]byte(MSG)).Bytes()
+	sig, e := sk.Sign([]byte(MSG))
+	assert.Nil(e)
+	signature, err := crypto.SignatureFromBytes(sig.Bytes())
+
+	fmt.Printf("Sig: %s", hex.EncodeToString(sig.Bytes()))
 	assert.Nil(err)
 	assert.NotNil(signature)
 

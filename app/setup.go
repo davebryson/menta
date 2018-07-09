@@ -3,9 +3,9 @@ package app
 import (
 	"os"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
+	pv "github.com/tendermint/tendermint/privval"
 	tmtypes "github.com/tendermint/tendermint/types"
-	pv "github.com/tendermint/tendermint/types/priv_validator"
-	cmn "github.com/tendermint/tmlibs/common"
 )
 
 var chainIdPrefix = "menta-chain-%v"

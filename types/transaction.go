@@ -2,7 +2,7 @@ package types
 
 import (
 	proto "github.com/golang/protobuf/proto"
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/tendermint/crypto"
 )
 
 func TransactionFromBytes(raw []byte) (*Transaction, error) {
@@ -42,7 +42,13 @@ func (tx *Transaction) Sign(key crypto.PrivKey) error {
 	if err != nil {
 		return err
 	}
-	tx.Sig = key.Sign(msgHash).Bytes()
+
+	sig, err := key.Sign(msgHash)
+	if err != nil {
+		return err
+	}
+	tx.Sig = sig.Bytes()
+
 	return nil
 }
 

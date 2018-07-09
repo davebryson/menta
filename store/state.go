@@ -5,10 +5,10 @@ import (
 
 	sdk "github.com/davebryson/menta/types"
 	proto "github.com/golang/protobuf/proto"
-	abci "github.com/tendermint/abci/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 
 	"github.com/tendermint/iavl"
-	dbm "github.com/tendermint/tmlibs/db"
+	dbm "github.com/tendermint/tendermint/libs/db"
 )
 
 // Move to protobuf!
@@ -82,7 +82,7 @@ func (st *StateStore) Query(req abci.RequestQuery) (res abci.ResponseQuery) {
 				break
 			}
 			res.Value = value
-			res.Proof = proof.Bytes()
+			res.Proof = []byte(proof.String()) // TODO: Is this right???
 		} else {
 			_, res.Value = tree.GetVersioned(queryKey, queryVersion)
 		}

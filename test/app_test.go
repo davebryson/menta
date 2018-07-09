@@ -9,8 +9,7 @@ import (
 	"github.com/davebryson/menta/tools"
 	sdk "github.com/davebryson/menta/types"
 	"github.com/stretchr/testify/assert"
-	abci "github.com/tendermint/abci/types"
-	//ex "github.com/davebryson/menta/examples"
+	abci "github.com/tendermint/tendermint/abci/types"
 )
 
 func writeNumber(v uint32) []byte {
@@ -78,7 +77,7 @@ func TestApp(t *testing.T) {
 func TestTesterBasics(t *testing.T) {
 	assert := assert.New(t)
 
-	expectedTreeHash := "cd5c39b2ff82a4fe914b095daef7becc348709c5"
+	expectedTreeHash := "954cbd280fcc961b2757c2350b421991ea86f68c"
 
 	// Setup app
 	app := menta.NewTestApp() // memdb
