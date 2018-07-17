@@ -16,6 +16,7 @@ const TEST_DIR = "test_app_config"
 
 func TestNodeApp(t *testing.T) {
 	defer func() {
+		time.Sleep(1 * time.Second)
 		os.RemoveAll(TEST_DIR)
 	}()
 

@@ -14,7 +14,7 @@ type MentaApp struct {
 	state        *store.StateStore
 	deliverCache *store.KVCache
 	checkCache   *store.KVCache
-	config       *cfg.Config
+	Config       *cfg.Config
 
 	// initChain
 	onGenesisHandler sdk.GenesisHandler
@@ -38,7 +38,7 @@ func NewApp(appname, homedir string) *MentaApp {
 	return &MentaApp{
 		name:         appname,
 		state:        state,
-		config:       config,
+		Config:       config,
 		deliverCache: state.RefreshCache().(*store.KVCache),
 		checkCache:   state.RefreshCache().(*store.KVCache),
 		handlers:     make(map[string]sdk.TxHandler),

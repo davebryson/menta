@@ -17,14 +17,11 @@ var (
 
 func (app *MentaApp) CreateNode() *node.Node {
 	// Assumes priv validator has been generated.  See loadConfig()
-	//privValFile := app.config.PrivValidatorFile()
-	//privValidator := pv.LoadFilePV(privValFile)
-	//papp := proxy.NewLocalClientCreator(app)
 	node, err := node.NewNode(
-		app.config,
-		pv.LoadOrGenFilePV(app.config.PrivValidatorFile()),
+		app.Config,
+		pv.LoadOrGenFilePV(app.Config.PrivValidatorFile()),
 		proxy.NewLocalClientCreator(app),
-		node.DefaultGenesisDocProviderFunc(app.config),
+		node.DefaultGenesisDocProviderFunc(app.Config),
 		node.DefaultDBProvider,
 		node.DefaultMetricsProvider,
 		logger,
@@ -45,7 +42,7 @@ func (app *MentaApp) Run() {
 }
 
 func (app *MentaApp) RunServer() {
-	srv, err := server.NewServer("0.0.0.0:46658", "socket", app)
+	srv, err := server.NewServer("0.0.0.0:26658", "socket", app)
 	if err != nil {
 		cmn.Exit(err.Error())
 	}
