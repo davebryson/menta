@@ -1,7 +1,9 @@
 package test
 
 import (
+	"fmt"
 	"os"
+	"sort"
 	"testing"
 
 	"github.com/davebryson/menta/store"
@@ -85,4 +87,71 @@ func TestStoreAndQuery(t *testing.T) {
 	cache.ApplyToState()
 	c3 := st.Commit()
 	assert.NotEqual(c3.Hash, c2.Hash)
+}
+
+func TestIter(t *testing.T) {
+	assert := assert.New(t)
+	defer func() {
+		os.RemoveAll("mstate.db")
+	}()
+
+	// From IAVL tests...
+	type record struct {
+		key   string
+		value string
+	}
+
+	records := []record{
+		{"abc", "123"},
+		{"low", "high"},
+		{"fan", "456"},
+		{"foo", "a"},
+		{"foobaz", "c"},
+		{"good", "bye"},
+		{"foobang", "d"},
+		{"foobar", "b"},
+		{"food", "e"},
+		{"foml", "f"},
+		{"g1/s1", "gs1"},
+		{"g1/s2", "gs1"},
+		{"g1/s3", "gs1"},
+		{"g1/s4", "gs1"},
+		{"g2/s1", "gs1"},
+		{"g2/s2", "gs1"},
+		{"g2/s3", "gs1"},
+		{"g2/s4", "gs1"},
+	}
+	keys := make([]string, len(records))
+	for i, r := range records {
+		keys[i] = r.key
+	}
+	sort.Strings(keys)
+
+	st := store.NewStateStore(".")
+	cache := store.NewCache(st)
+	for _, r := range records {
+		cache.Set([]byte(r.key), []byte(r.value))
+	}
+	// Commit
+	cache.ApplyToState()
+	st.Commit()
+
+	viewed := []string{}
+	viewer := func(key []byte, value []byte) bool {
+		viewed = append(viewed, string(key))
+		return false
+	}
+	st.IterateKeyRange([]byte("g1/"), []byte("g2/"), true, viewer)
+	assert.Equal(4, len(viewed))
+	assert.Equal("g1/s1", viewed[0])
+	assert.Equal("g1/s4", viewed[3])
+
+	allgs := []string{}
+	st.IterateKeyRange([]byte("g"), []byte("h"), true, func(key []byte, value []byte) bool {
+		fmt.Printf("Key: %s\n", key)
+		allgs = append(allgs, string(key))
+		return false
+	})
+	assert.Equal(9, len(allgs))
+
 }
