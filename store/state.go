@@ -53,6 +53,11 @@ func (st *StateStore) Get(key []byte) []byte {
 	return bits
 }
 
+// Basic iterator non-inclusive
+func (st *StateStore) IterateKeyRange(start, end []byte, ascending bool, fn func(key []byte, value []byte) bool) bool {
+	return st.tree.IterateRange(start, end, ascending, fn)
+}
+
 func (st *StateStore) Query(req abci.RequestQuery) (res abci.ResponseQuery) {
 	// Based on the approach used in cosmos-sdk
 	queryKey := req.Data
