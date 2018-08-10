@@ -141,13 +141,14 @@ func TestIter(t *testing.T) {
 		viewed = append(viewed, string(key))
 		return false
 	}
-	st.IterateKeyRange([]byte("g1/"), []byte("g2/"), true, viewer)
+
+	cache.IterateKeyRange([]byte("g1/"), []byte("g2/"), true, viewer)
 	assert.Equal(4, len(viewed))
 	assert.Equal("g1/s1", viewed[0])
 	assert.Equal("g1/s4", viewed[3])
 
 	allgs := []string{}
-	st.IterateKeyRange([]byte("g"), []byte("h"), true, func(key []byte, value []byte) bool {
+	cache.IterateKeyRange([]byte("g"), []byte("h"), true, func(key []byte, value []byte) bool {
 		fmt.Printf("Key: %s\n", key)
 		allgs = append(allgs, string(key))
 		return false

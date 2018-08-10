@@ -1,8 +1,11 @@
 package types
 
+// TODO: Add IterateKeyRange to this interface
+// Implement on both Cache and Store
 type KVStore interface {
 	Get(key []byte) []byte
 	Set(key, value []byte)
+	IterateKeyRange(start, end []byte, ascending bool, fn func(key []byte, value []byte) bool) bool
 }
 
 type Cache interface {

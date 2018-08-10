@@ -81,6 +81,10 @@ func (cache *KVCache) Get(key []byte) []byte {
 	return nil
 }
 
+func (cache *KVCache) IterateKeyRange(start, end []byte, ascending bool, fn func(key []byte, value []byte) bool) bool {
+	return cache.statedb.IterateKeyRange(start, end, ascending, fn)
+}
+
 func (cache *KVCache) ApplyToState() {
 	// deterministic: sort storage and update in order
 
