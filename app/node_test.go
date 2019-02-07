@@ -1,4 +1,4 @@
-package test
+package app
 
 import (
 	"context"
@@ -6,25 +6,23 @@ import (
 	"testing"
 	"time"
 
-	menta "github.com/davebryson/menta/app"
-	sdk "github.com/davebryson/menta/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/tendermint/tendermint/types"
 )
 
-const TEST_DIR = "test_app_config"
+const TestDir = "test_app_config"
 
 func TestNodeApp(t *testing.T) {
 	defer func() {
-		time.Sleep(1 * time.Second)
-		os.RemoveAll(TEST_DIR)
+		time.Sleep(2 * time.Second)
+		os.RemoveAll(TestDir)
 	}()
 
-	menta.InitTendermint(TEST_DIR)
-	app := menta.NewApp("testapp", TEST_DIR)
-	app.OnTx("hello", func(ctx sdk.Context) sdk.Result {
-		return sdk.Result{}
-	})
+	InitTendermint(TestDir)
+	app := NewApp("testapp", TestDir)
+	//app.OnTx("hello", func(ctx sdk.Context) sdk.Result {
+	//	return sdk.Result{}
+	//})
 
 	node := app.CreateNode()
 	err := node.Start()

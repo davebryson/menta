@@ -14,17 +14,18 @@ func writeNumber(v uint32) []byte {
 	return buf
 }
 
+//NOTE: This example requires sending the transaction in a serialized Tx. (see types)
 func main() {
 
 	// runs tendermint init - "" default to ~/.menta
 	menta.InitTendermint("")
-
 	// setup the app
 	app := menta.NewApp("counterapp", "")
 
 	// initial state callback
-	app.OnGenesis(func(ctx sdk.Context, req abci.RequestInitChain) {
+	app.OnInitialStart(func(ctx sdk.Context, req abci.RequestInitChain) (res abci.ResponseInitChain) {
 		ctx.Db.Set([]byte("count"), writeNumber(0))
+		return
 	})
 
 	// tx callback to increment the count

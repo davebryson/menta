@@ -1,95 +1,70 @@
-package test
+package store
 
 import (
-	"fmt"
 	"os"
 	"sort"
 	"testing"
 
-	"github.com/davebryson/menta/store"
-	sdk "github.com/davebryson/menta/types"
 	"github.com/stretchr/testify/assert"
+	abci "github.com/tendermint/tendermint/abci/types"
 )
 
-// Tests
+// Tests Store and Cache
 func TestStoreBasics(t *testing.T) {
 	assert := assert.New(t)
 	defer func() {
 		os.RemoveAll("mstate.db")
 	}()
 
-	st := store.NewStateStore(".")
-	dcache := store.NewCache(st)
+	st := NewStateStore(".")
+	dcache := NewCache(st)
+	// Setter/getter
 	dcache.Set([]byte("name"), []byte("dave"))
-	r := dcache.Get([]byte("name"))
-	assert.Equal([]byte("dave"), r)
-	r1 := dcache.Get([]byte("not"))
-	assert.Nil(r1)
+	assert.Equal([]byte("dave"), dcache.Get([]byte("name")))
+	assert.Nil(dcache.Get([]byte("not")))
 
 	// abci.Commit()
 	dcache.ApplyToState()
 	info := st.Commit()
-
 	assert.Equal(int64(1), info.Version)
 	st.Close()
 
-	// Check the store
-	st = store.NewStateStore(".")
-	dcache = store.NewCache(st)
-	r = dcache.Get([]byte("name"))
-
-	assert.Equal([]byte("dave"), r)
+	// Check the store from the previous commit
+	st = NewStateStore(".")
+	dcache = NewCache(st)
+	assert.Equal([]byte("dave"), dcache.Get([]byte("name")))
 	assert.Equal(info.Version, st.CommitInfo.Version)
 	assert.Equal(info.Hash, st.CommitInfo.Hash)
 
 	st.Close()
 }
 
-func TestStoreAndQuery(t *testing.T) {
+func TestStoreQueries(t *testing.T) {
 	assert := assert.New(t)
-	defer func() {
-		os.RemoveAll("mstate.db")
-	}()
 
-	k := sdk.CreateKey()
-	bobAddress := k.Address
-	bob, err := sdk.AccountFromPubKey(k.PrivateKey.PubKey().Bytes())
-	assert.Nil(err)
+	st := NewStateStore("") // in-memory
+	dcache := NewCache(st)
+	dcache.Set([]byte("name1"), []byte("dave"))
+	dcache.Set([]byte("name2"), []byte("bob"))
+	dcache.ApplyToState()
+	st.Commit()
 
-	// Set up the store
-	st := store.NewStateStore(".")
-	cache := store.NewCache(st)
-	cache.SetAccount(bob)
-	cache.Set([]byte("t"), []byte("one"))
-	// Commit
-	cache.ApplyToState()
-	c1 := st.Commit()
+	rq1 := st.Query(abci.RequestQuery{Path: "/key", Data: []byte("name1")})
+	assert.NotNil(rq1)
+	assert.Equal(uint32(0), rq1.Code)
+	assert.Equal([]byte("dave"), rq1.Value)
 
-	// New Cache
-	cache = store.NewCache(st)
-	bob2, err := cache.GetAccount(bobAddress)
-	assert.Nil(err)
-	assert.Equal(bob.PubKey.Bytes(), bob2.PubKey.Bytes())
-	result := cache.Get([]byte("t"))
-	assert.Equal([]byte("one"), result)
-	assert.Equal(st.CommitInfo.Version, c1.Version)
+	//root := commit.Hash
 
-	// No changes
-	cache.ApplyToState()
-	c2 := st.Commit()
-	assert.Equal(c2.Hash, c1.Hash)
-
-	// New Cache
-	cache = store.NewCache(st)
-	// Add
-	cache.Set([]byte("t"), []byte("two"))
-	// Commit
-	cache.ApplyToState()
-	c3 := st.Commit()
-	assert.NotEqual(c3.Hash, c2.Hash)
+	// Try proof
+	rq2 := st.Query(abci.RequestQuery{Path: "/key", Data: []byte("name1"), Prove: true})
+	assert.NotNil(rq2)
+	assert.NotNil(rq2.Proof)
+	// TODO: Verify the proof
+	//fmt.Printf("Proof: %v\n", rq2.Proof)
 }
 
-func TestIter(t *testing.T) {
+func TestStoreIter(t *testing.T) {
 	assert := assert.New(t)
 	defer func() {
 		os.RemoveAll("mstate.db")
@@ -127,8 +102,8 @@ func TestIter(t *testing.T) {
 	}
 	sort.Strings(keys)
 
-	st := store.NewStateStore(".")
-	cache := store.NewCache(st)
+	st := NewStateStore(".")
+	cache := NewCache(st)
 	for _, r := range records {
 		cache.Set([]byte(r.key), []byte(r.value))
 	}
@@ -149,7 +124,6 @@ func TestIter(t *testing.T) {
 
 	allgs := []string{}
 	cache.IterateKeyRange([]byte("g"), []byte("h"), true, func(key []byte, value []byte) bool {
-		fmt.Printf("Key: %s\n", key)
 		allgs = append(allgs, string(key))
 		return false
 	})

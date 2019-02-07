@@ -6,12 +6,11 @@ import (
 	sdk "github.com/davebryson/menta/types"
 	proto "github.com/golang/protobuf/proto"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto/merkle"
 
 	"github.com/tendermint/iavl"
 	dbm "github.com/tendermint/tendermint/libs/db"
 )
-
-// Move to protobuf!
 
 const (
 	CacheSize   = 1000
@@ -20,12 +19,11 @@ const (
 
 var commitKey = []byte("/menta/commitinfo")
 
-//var cdc = amino.NewCodec()
 var _ sdk.Store = (*StateStore)(nil)
 
 type StateStore struct {
 	db         dbm.DB
-	tree       *iavl.VersionedTree
+	tree       *iavl.MutableTree
 	CommitInfo sdk.CommitInfo
 	numHistory int64
 }
@@ -33,7 +31,7 @@ type StateStore struct {
 func NewStateStore(dbdir string) *StateStore {
 	db := loadDb(dbdir)
 	ci := loadCommitData(db)
-	tree := iavl.NewVersionedTree(db, CacheSize)
+	tree := iavl.NewMutableTree(db, CacheSize)
 	tree.LoadVersion(ci.Version)
 
 	return &StateStore{
@@ -53,47 +51,74 @@ func (st *StateStore) Get(key []byte) []byte {
 	return bits
 }
 
-// Basic iterator non-inclusive
+// IterateKeyRange - iterator non-inclusive
 func (st *StateStore) IterateKeyRange(start, end []byte, ascending bool, fn func(key []byte, value []byte) bool) bool {
 	return st.tree.IterateRange(start, end, ascending, fn)
 }
 
-func (st *StateStore) Query(req abci.RequestQuery) (res abci.ResponseQuery) {
-	// Based on the approach used in cosmos-sdk
-	queryKey := req.Data
-	queryPath := req.Path
-	queryVersion := req.Height
-
-	tree := st.tree
+// Select a query version from the store.
+func getQueryHeight(store *StateStore, queryVersion int64) int64 {
+	tree := store.tree
 	if queryVersion == 0 {
-		latest := tree.Version64()
-		queryVersion = latest
-		/*if tree.VersionExists(latest - 1) {
-			queryVersion = latest - 1
-		} else {
-			queryVersion = latest
-		}*/
+		latest := tree.Version()
+		if tree.VersionExists(latest - 1) {
+			// Use the last version vs the current version
+			// if the user specifies 0 or makes no specfic request
+			return latest - 1
+		}
+		// If no previous version exists, use the latest
+		return latest
+	}
+	// Otherwise use what they requested
+	return queryVersion
+}
+
+// Query returns a value and/or proof from the tree.
+func (st *StateStore) Query(req abci.RequestQuery) (res abci.ResponseQuery) {
+	// This code is all adapted from the Cosmos SDK
+	if req.Data == nil || len(req.Data) == 0 {
+		res.Code = sdk.BadQuery
+		res.Log = "Error: query requires a key"
+		return
 	}
 
-	res.Height = queryVersion
-	res.Key = queryKey
+	queryKey := req.Data
+	queryPath := req.Path
+	queryVersion := getQueryHeight(st, req.Height)
+	tree := st.tree
 
 	switch queryPath {
-	case "/store", "/key":
+	case "/key":
+		res.Height = queryVersion
+		res.Key = queryKey
+		key := queryKey
+
 		if req.Prove {
 			value, proof, err := tree.GetVersionedWithProof(queryKey, queryVersion)
 			if err != nil {
 				res.Log = err.Error()
 				break
 			}
-			res.Value = value
-			res.Proof = []byte(proof.String()) // TODO: Is this right???
+			if proof == nil {
+				// Proof == nil implies that the store is empty.
+				if value != nil {
+					panic("unexpected value for an empty proof")
+				}
+			}
+			if value != nil {
+				res.Value = value
+				res.Proof = &merkle.Proof{Ops: []merkle.ProofOp{iavl.NewIAVLValueOp(key, proof).ProofOp()}}
+			} else {
+				// value not found
+				res.Value = nil
+				res.Proof = &merkle.Proof{Ops: []merkle.ProofOp{iavl.NewIAVLAbsenceOp(key, proof).ProofOp()}}
+			}
 		} else {
 			_, res.Value = tree.GetVersioned(queryKey, queryVersion)
 		}
 	default:
 		res.Log = fmt.Sprintf("Unexpected Query path: %v", queryPath)
-		res.Code = sdk.NotFound
+		res.Code = sdk.BadQuery
 	}
 	return
 }
@@ -102,7 +127,7 @@ func (st *StateStore) Commit() sdk.CommitInfo {
 	hash, version, err := st.tree.SaveVersion()
 
 	// from cosmos-sdk iavlstore - Release an old version of history
-	if st.numHistory > 0 && (st.numHistory < st.tree.Version64()) {
+	if st.numHistory > 0 && (st.numHistory < st.tree.Version()) {
 		toRelease := version - st.numHistory
 		st.tree.DeleteVersion(toRelease)
 	}

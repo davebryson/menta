@@ -1,8 +1,20 @@
 # MENTA
-A simple golang framework for creating Tendermint blockchain applications.
+A *simple* framework for creating Tendermint blockchain applications.  
+
+But what about [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk) ?.  Good question, if you're building a public application or planning to deploy to Cosmos, you should definitely use it.  
+
+This framework is for:
+* rapid prototyping and small pilot projects  
+* folks looking to build Tendermint apps not destined for the Cosmos, or 
+* folks wanting to learn *how* a Tendermint ABCI works
+
+Of course, you can always start here and port to the Cosmos SDK later. That's the magic of ABCI
+
+**Current supported Tendermint version: 0.29.0**
 
 Get it: `dep ensure -add github.com/davebryson/menta`
 
+Get started:
 Here's an example of the ubiquitous 'counter' application:
 ```golang
 package main
@@ -30,8 +42,8 @@ func main() {
 	// Setup the application. "counterapp is the name-o"
 	app := menta.NewApp("counterapp", "")
 
-	// Set up the initial - (this is the abci.InitChain())
-	app.OnGenesis(func(ctx sdk.Context, req abci.RequestInitChain) {
+	// Set up the initial state for the new app - (this is the abci.InitChain())
+	app.OnInitialStart(func(ctx sdk.Context, req abci.RequestInitChain) {
 		ctx.Db.Set([]byte("count"), writeNumber(0))
 	})
 
@@ -43,64 +55,7 @@ func main() {
 		return sdk.Result{}
 	})
 
-	// Run with the app - embedded in Tendermint
+	// Run with the app - embedded with Tendermint
 	app.Run()
-
 }
 ```
-
-Menta also makes local development and testing a snap!
-
-Here's how to test the app without running a node:
-```golang
-// in some test function...
-func TestTesterBasics(t *testing.T) {
-	assert := assert.New(t)
-
-        // Expected tree hash after the transactions
-	expectedTreeHash := "cd5c39b2ff82a4fe914b095daef7becc348709c5"
-
-	// Setup app - not the use of 'NewTestApp'
-	app := menta.NewTestApp()
-
-        // Same as the example above
-	app.OnGenesis(func(ctx sdk.Context, req abci.RequestInitChain) {
-		ctx.Db.Set([]byte("count"), writeNumber(0))
-	})
-	app.OnTx("counter", func(ctx sdk.Context) sdk.Result {
-		count := binary.BigEndian.Uint32(ctx.Db.Get([]byte("count")))
-		count += uint32(1)
-		ctx.Db.Set([]byte("count"), writeNumber(count))
-		return sdk.Result{}
-	})
-
-	// Setup tester
-	tapp := tools.NewTester(app)
-
-	// Run a query - initial state should be zero
-	_, val := tapp.QueryByKey("count")
-	assert.Equal(uint32(0), binary.BigEndian.Uint32(val))
-
-	// Do some Txs
-	for i := 0; i < 10; i++ {
-		tx1, err := makeTx()
-		assert.Nil(err)
-		tapp.SendTx(tx1)
-	}
-
-	// Make Block
-	c1, numTx := tapp.MakeBlock()
-	hash := fmt.Sprintf("%x", c1.GetHash())
-
-	assert.Equal(10, numTx)
-	assert.Equal(int64(1), c1.GetVersion())
-	assert.Equal(expectedTreeHash, hash)
-
-	_, val = tapp.QueryByKey("count")
-	assert.Equal(uint32(10), binary.BigEndian.Uint32(val))
-}
-```
-
-More to come.  Of course if you're looking for a more full-featured SDK, I'd recommend [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk)
-
-TODO: Upgrade to latest ABCI 12

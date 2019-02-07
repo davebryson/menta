@@ -1,67 +1,41 @@
 package store
 
+// In-memory cache used by the menta app
 import (
 	"sort"
 
 	"github.com/davebryson/menta/types"
 )
 
+// Implements KVCache
 var _ types.Cache = (*KVCache)(nil)
 
-type accountCacheObject struct {
-	account *types.Account
-	dirty   bool
-}
-
+// Used to track whether a k/v pair has been updated.
 type dataCacheObj struct {
 	value []byte
 	dirty bool
 }
 
+// KVCache used by the app. It wraps a simple cache and access to the State Store
 type KVCache struct {
-	statedb  *StateStore
-	storage  map[string]dataCacheObj
-	accounts map[string]accountCacheObject
+	statedb *StateStore
+	storage map[string]dataCacheObj
 }
 
+// NewCache return a fresh empty cache with ref to the State Store
 func NewCache(store *StateStore) *KVCache {
 	return &KVCache{
-		statedb:  store,
-		storage:  make(map[string]dataCacheObj),
-		accounts: make(map[string]accountCacheObject),
+		statedb: store,
+		storage: make(map[string]dataCacheObj),
 	}
 }
 
-func (cache *KVCache) SetAccount(account *types.Account) {
-	key := cacheAccountKey(account.Address())
-	cache.accounts[key] = accountCacheObject{account, true}
-}
-
+// Set a key in the cache
 func (cache *KVCache) Set(key, val []byte) {
 	cache.storage[string(key)] = dataCacheObj{val, true}
 }
 
-func (cache *KVCache) GetAccount(address []byte) (*types.Account, error) {
-	key := cacheAccountKey(address)
-
-	// Try the cache
-	if acctObj, ok := cache.accounts[key]; ok {
-		return acctObj.account, nil
-	}
-
-	// Not in the cache, go to the tree...
-	acctBits := cache.statedb.Get([]byte(key))
-	account, err := types.AccountFromBytes(acctBits)
-	if err != nil {
-		return nil, err
-	}
-
-	// Cache it
-	cache.accounts[key] = accountCacheObject{account, false}
-
-	return account, nil
-}
-
+// Get a value for a given key.  Try the cache first and then the state db
 func (cache *KVCache) Get(key []byte) []byte {
 	cacheKey := string(key)
 
@@ -81,34 +55,16 @@ func (cache *KVCache) Get(key []byte) []byte {
 	return nil
 }
 
+// IterateKeyRange returns results that are processed via the callback func
 func (cache *KVCache) IterateKeyRange(start, end []byte, ascending bool, fn func(key []byte, value []byte) bool) bool {
 	return cache.statedb.IterateKeyRange(start, end, ascending, fn)
 }
 
+// ApplyToState is called during abci.commit().   It sorts all keys in the cache
+// for determinism, then writes the set to the tree
 func (cache *KVCache) ApplyToState() {
-	// deterministic: sort storage and update in order
-
-	// Sort account and update in order
-	accountAddresses := make([]string, 0, len(cache.accounts))
-	for k, _ := range cache.accounts {
-		accountAddresses = append(accountAddresses, k)
-	}
-
-	sort.Strings(accountAddresses)
-
-	for _, addy := range accountAddresses {
-		a := cache.accounts[addy]
-		if a.account == nil || !a.dirty {
-			continue
-		}
-		account := a.account
-		if bits, err := account.Bytes(); err == nil {
-			cache.statedb.Set([]byte(addy), bits)
-		}
-	}
-
 	storageKeys := make([]string, 0, len(cache.storage))
-	for k, _ := range cache.storage {
+	for k := range cache.storage {
 		storageKeys = append(storageKeys, k)
 	}
 
@@ -116,6 +72,7 @@ func (cache *KVCache) ApplyToState() {
 
 	for _, k := range storageKeys {
 		data := cache.storage[k]
+		// We don't (re)set unchanged data
 		if data.value == nil || !data.dirty {
 			continue
 		}

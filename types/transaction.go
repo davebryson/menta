@@ -2,7 +2,6 @@ package types
 
 import (
 	proto "github.com/golang/protobuf/proto"
-	crypto "github.com/tendermint/tendermint/crypto"
 )
 
 func TransactionFromBytes(raw []byte) (*Transaction, error) {
@@ -18,6 +17,7 @@ func (tx *Transaction) Bytes() ([]byte, error) {
 	return proto.Marshal(tx)
 }
 
+/**
 func (tx *Transaction) Hash() ([]byte, error) {
 	bits, err := proto.Marshal(&Transaction{
 		From:  tx.From,
@@ -62,4 +62,4 @@ func (tx *Transaction) Verify(pubKey crypto.PubKey) bool {
 		return false
 	}
 	return pubKey.VerifyBytes(hash, sig)
-}
+}*/
