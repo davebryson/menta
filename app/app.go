@@ -179,7 +179,7 @@ func (app *MentaApp) DeliverTx(raw []byte) abci.ResponseDeliverTx {
 		return abci.ResponseDeliverTx{Code: e.Code, Log: e.Log}
 	}
 
-	handler := app.router.GetHandler(tx.Call)
+	handler := app.router.GetHandler(tx.Route)
 	if handler == nil {
 		e := sdk.ErrorNoHandler()
 		return abci.ResponseDeliverTx{Code: e.Code, Log: e.Log}

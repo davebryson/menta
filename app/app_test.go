@@ -16,8 +16,8 @@ func bigE(v uint32) []byte {
 }
 
 func makeTx() ([]byte, error) {
-	t := &sdk.Transaction{Call: "counter_test"}
-	return t.Bytes()
+	t := &sdk.Transaction{Route: "counter_test"}
+	return t.ToBytes()
 }
 
 // Test to check all callbacks and handler hooks

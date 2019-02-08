@@ -43,3 +43,7 @@
 [[override]]
   name = "github.com/tendermint/tendermint"
   revision = "v0.29.0"
+
+[[constraint]]
+  name = "github.com/kevinburke/nacl"
+  branch = "master"

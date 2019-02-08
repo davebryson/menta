@@ -27,8 +27,8 @@ func counterTx(ctx sdk.Context) sdk.Result {
 }
 
 func makeTx() ([]byte, error) {
-	t := &sdk.Transaction{Call: "counter"}
-	return t.Bytes()
+	t := &sdk.Transaction{Route: "counter"}
+	return t.ToBytes()
 }
 
 func TestTesterBasics(t *testing.T) {

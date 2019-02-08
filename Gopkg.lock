@@ -113,6 +113,16 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/kevinburke/nacl"
+  packages = [
+    ".",
+    "randombytes",
+    "sign"
+  ]
+  revision = "38063847a0c9aca6aa4248db9990b411da7b6f4e"
+
+[[projects]]
+  branch = "master"
   name = "github.com/kr/logfmt"
   packages = ["."]
   revision = "b84e30acd515aadc4b783ad4ff83aff3299bdfe0"
@@ -441,6 +451,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ac13c6eaa41b640cb412bb6805b06f16a131e3542af1a7e36668b92de47e5d91"
+  inputs-digest = "c8d34eebf601abcc27b015912f19cac64c1b11b05f8c9194ae5c00cd38d69d45"
   solver-name = "gps-cdcl"
   solver-version = 1

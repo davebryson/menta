@@ -1,9 +1,14 @@
 package types
 
+// Wrapper Tx
 import (
+	"crypto/sha256"
+
 	proto "github.com/golang/protobuf/proto"
+	signer "github.com/kevinburke/nacl/sign"
 )
 
+// TransactionFromBytes decodes a []byte to a Transaction
 func TransactionFromBytes(raw []byte) (*Transaction, error) {
 	var tx Transaction
 	err := proto.Unmarshal(raw, &tx)
@@ -13,53 +18,43 @@ func TransactionFromBytes(raw []byte) (*Transaction, error) {
 	return &tx, nil
 }
 
-func (tx *Transaction) Bytes() ([]byte, error) {
+// ToBytes returns a serialized Tx
+func (tx *Transaction) ToBytes() ([]byte, error) {
 	return proto.Marshal(tx)
 }
 
-/**
+// Hash returns a sha256 hash of the Tx contents
 func (tx *Transaction) Hash() ([]byte, error) {
 	bits, err := proto.Marshal(&Transaction{
-		From:  tx.From,
-		To:    tx.To,
-		Nonce: tx.Nonce,
-		Value: tx.Value,
-		Call:  tx.Call,
-		Data:  tx.Data,
+		Route:  tx.Route,
+		Action: tx.Action,
+		Nonce:  tx.Nonce,
+		Data:   tx.Data,
 	})
 
 	if err != nil {
 		return nil, err
 	}
-	return crypto.Sha256(bits), nil
+	hash := sha256.Sum256(bits)
+	return hash[:], nil
 }
 
-func (tx *Transaction) Sign(key crypto.PrivKey) error {
+// Sign a Transaction given a KeyPair
+func (tx *Transaction) Sign(key *KeyPair) error {
 	// Always set From to signer
-	tx.From = key.PubKey().Address()
+	tx.Sender = key.Address
 
 	msgHash, err := tx.Hash()
 	if err != nil {
 		return err
 	}
 
-	sig, err := key.Sign(msgHash)
-	if err != nil {
-		return err
-	}
-	tx.Sig = sig.Bytes()
+	tx.Sig = signer.Sign(msgHash, key.Private)
 
 	return nil
 }
 
-func (tx *Transaction) Verify(pubKey crypto.PubKey) bool {
-	hash, e0 := tx.Hash()
-	if e0 != nil {
-		return false
-	}
-	sig, e1 := crypto.SignatureFromBytes(tx.Sig)
-	if e1 != nil {
-		return false
-	}
-	return pubKey.VerifyBytes(hash, sig)
-}*/
+// Verify the transaction is valid given a public key
+func (tx *Transaction) Verify(pubKey signer.PublicKey) bool {
+	return signer.Verify(tx.Sig, pubKey)
+}

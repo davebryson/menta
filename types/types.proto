@@ -5,9 +5,9 @@ package types;
 // 'data' is a binary of application specific content.
 // The application is reponsible for encoding/decoding it.
 message Transaction {
-  bytes sender = 1;
-  string route = 2;
-  string action = 3;
+  string route = 1;
+  string action = 2;
+  bytes sender = 3;
   uint64 nonce = 4;
   bytes data = 5;
   bytes sig = 6;
