@@ -7,6 +7,7 @@ import (
 	"github.com/tendermint/go-amino"
 
 	mentapp "github.com/davebryson/menta/app"
+	"github.com/davebryson/menta/store"
 	sdk "github.com/davebryson/menta/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
@@ -38,7 +39,6 @@ func (wallet FunnyMoneyWallet) GetPubKey() tmcrypto.PubKey {
 func (wallet FunnyMoneyWallet) SendMoney(msg FunnyMoneyMsg) ([]byte, error) {
 	// json encoding automatically sorts the keys
 	sigmsg, err := json.Marshal(msg)
-
 	sig, err := wallet.secretKey.Sign(sigmsg)
 	if err != nil {
 		return nil, err
@@ -145,6 +145,32 @@ func MoneyExchange(ctx sdk.Context) sdk.Result {
 
 }
 
+// Query Handler
+func QueryAccount(key []byte, ctx store.QueryContext) abci.ResponseQuery {
+	acctAddress := key // Only to be explicit here - the key is an acct address
+	res := abci.ResponseQuery{}
+
+	res.Code = 10 // fail
+	raw := ctx.Get(acctAddress)
+	if raw == nil {
+		res.Log = "Account not found"
+	}
+
+	acct, err := DecodeAcct(raw)
+	if err != nil {
+		res.Log = "Problem decoding..."
+	}
+
+	jsonbits, err := cdc.MarshalJSON(acct)
+	if err != nil {
+		res.Log = "Problem making json..."
+	}
+
+	res.Code = 0
+	res.Value = jsonbits
+	return res
+}
+
 // App
 func createApp(bob, alice FunnyMoneyWallet) *mentapp.MentaApp {
 	cdc := amino.NewCodec()
@@ -186,6 +212,7 @@ func createApp(bob, alice FunnyMoneyWallet) *mentapp.MentaApp {
 	})
 
 	app.Route(FunnyMoneyRouteKey, MoneyExchange)
+	app.RouteQuery("/hello/account", QueryAccount)
 
 	// Add an EndBlock handler
 	app.OnEndBlock(func(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {

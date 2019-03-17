@@ -1,7 +1,6 @@
 package types
 
-// Context provides access to the state store and
-// the current decoded Transaction
+// Context provides access to the state store and the current decoded Transaction
 type Context struct {
 	Db Cache
 	Tx Tx

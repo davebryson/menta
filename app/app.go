@@ -3,8 +3,6 @@
 package app
 
 import (
-	"fmt"
-
 	"github.com/davebryson/menta/store"
 	sdk "github.com/davebryson/menta/types"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -31,8 +29,10 @@ type MentaApp struct {
 	beginBlockHandler sdk.BeginBlockHandler
 	// EndBlock
 	endBlockHandler sdk.EndBlockHandler
-	// DeliverTx
-	router *router
+	// DeliverTx router
+	router map[string]sdk.TxHandler
+	// Query router
+	queryRouter map[string]store.QueryHandler
 }
 
 // NewApp returns a new instance of MentaApp where appname is the name of
@@ -52,7 +52,8 @@ func NewApp(appname, homedir string, txDecoder sdk.TxDecoder) *MentaApp {
 		Config:       config,
 		deliverCache: state.RefreshCache().(*store.KVCache),
 		checkCache:   state.RefreshCache().(*store.KVCache),
-		router:       NewRouter(),
+		router:       make(map[string]sdk.TxHandler, 0),
+		queryRouter:  make(map[string]store.QueryHandler, 0),
 	}
 	app.decodeTxFn = txDecoder
 	return app
@@ -68,7 +69,8 @@ func NewMockApp(txDecoder sdk.TxDecoder) *MentaApp {
 		state:        state,
 		deliverCache: state.RefreshCache().(*store.KVCache),
 		checkCache:   state.RefreshCache().(*store.KVCache),
-		router:       NewRouter(),
+		router:       make(map[string]sdk.TxHandler, 0),
+		queryRouter:  make(map[string]store.QueryHandler, 0),
 	}
 	app.decodeTxFn = txDecoder
 	return app
@@ -101,7 +103,11 @@ func (app *MentaApp) OnBeginBlock(fn sdk.BeginBlockHandler) {
 // 'routeName' should correspond with the value returned for a given msg.Route().
 // 'fn' is your handler.
 func (app *MentaApp) Route(routeName string, fn sdk.TxHandler) {
-	app.router.Add(routeName, fn)
+	app.router[routeName] = fn
+}
+
+func (app *MentaApp) RouteQuery(path string, fn store.QueryHandler) {
+	app.queryRouter[path] = fn
 }
 
 // OnEndBlock : Add this handler to do something after a block of
@@ -142,9 +148,28 @@ func (app *MentaApp) Info(req abci.RequestInfo) abci.ResponseInfo {
 }
 
 // Query (ABCI callback) *committed* state in the Tree
-func (app *MentaApp) Query(query abci.RequestQuery) abci.ResponseQuery {
-	// Delegate to Store
-	return app.state.Query(query)
+func (app *MentaApp) Query(req abci.RequestQuery) abci.ResponseQuery {
+	// Get path and key
+	// look up handler by path
+	// send it key and context
+	if req.Data == nil || len(req.Data) == 0 {
+		res := abci.ResponseQuery{}
+		res.Code = sdk.BadQuery
+		res.Log = "Error: query requires a key"
+		return res
+	}
+	queryKey := req.Data
+	queryPath := req.Path
+
+	handler := app.queryRouter[queryPath]
+	if handler == nil {
+		res := abci.ResponseQuery{}
+		res.Code = sdk.BadQuery
+		res.Log = "no query handler found"
+		return res
+	}
+	ctx := store.NewQueryContext(app.state)
+	return handler(queryKey, ctx)
 }
 
 // CheckTx (ABCI callback) populates the mempool. Transactions are ran through
@@ -158,7 +183,6 @@ func (app *MentaApp) CheckTx(raw []byte) abci.ResponseCheckTx {
 
 	tx, err := app.decodeTxFn(raw)
 	if err != nil {
-		fmt.Printf("TX ERR: %v", err)
 		e := sdk.ErrorBadTx()
 		return abci.ResponseCheckTx{Code: e.Code, Log: e.Log}
 	}
@@ -191,8 +215,7 @@ func (app *MentaApp) DeliverTx(raw []byte) abci.ResponseDeliverTx {
 		return abci.ResponseDeliverTx{Code: e.Code, Log: e.Log}
 	}
 
-	routeName := tx.GetMsg().Route()
-	handler := app.router.GetHandler(routeName)
+	handler := app.router[tx.GetMsg().Route()]
 	if handler == nil {
 		e := sdk.ErrorNoHandler()
 		return abci.ResponseDeliverTx{Code: e.Code, Log: e.Log}
