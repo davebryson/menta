@@ -25,8 +25,6 @@ func TestCryptoBasics(t *testing.T) {
 	raw := pubKey.(ed25519.PubKeyEd25519)
 	fmt.Printf("W/OPrefix PubKey: %v\n", raw.String())
 
-	//mentacryto.ShowAminoPrefix()
-
 	msg := crypto.CRandBytes(128)
 	sig, err := privKey.Sign(msg)
 	assert.Nil(err)

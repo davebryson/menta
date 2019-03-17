@@ -168,6 +168,7 @@ func (app *MentaApp) Query(req abci.RequestQuery) abci.ResponseQuery {
 		res.Log = "no query handler found"
 		return res
 	}
+
 	ctx := store.NewQueryContext(app.state)
 	return handler(queryKey, ctx)
 }
