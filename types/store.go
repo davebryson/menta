@@ -1,5 +1,10 @@
 package types
 
+type CommitInfo struct {
+	Version int64
+	Hash    []byte
+}
+
 // KVStore is the base interface for all methods related to a store. See the store package
 type KVStore interface {
 	// Get from the cache or tree
@@ -21,7 +26,7 @@ type Cache interface {
 type Store interface {
 	KVStore
 	// Commit is called on Abci commit to commit the tree to storage and update the hash
-	Commit() CommitInfo
+	Commit() *CommitInfo
 	// Close the store
 	Close()
 	// Refresh the check/deliver caches

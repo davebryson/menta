@@ -1,4 +1,4 @@
-package app
+package test
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	mapp "github.com/davebryson/menta/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/tendermint/tendermint/types"
 )
@@ -18,8 +19,8 @@ func TestNodeApp(t *testing.T) {
 		os.RemoveAll(TestDir)
 	}()
 
-	InitTendermint(TestDir)
-	app := NewApp("testapp", TestDir)
+	mapp.InitTendermint(TestDir)
+	app := mapp.NewApp("testapp", TestDir, nil)
 	//app.OnTx("hello", func(ctx sdk.Context) sdk.Result {
 	//	return sdk.Result{}
 	//})

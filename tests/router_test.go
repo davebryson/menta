@@ -1,8 +1,9 @@
-package app
+package test
 
 import (
 	"testing"
 
+	"github.com/davebryson/menta/app"
 	sdk "github.com/davebryson/menta/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -10,7 +11,7 @@ import (
 func TestRouter(t *testing.T) {
 	assert := assert.New(t)
 
-	router := NewRouter()
+	router := app.NewRouter()
 	router.Add("dave", func(ctx sdk.Context) sdk.Result {
 		return sdk.Result{Log: "dave"}
 	})

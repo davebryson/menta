@@ -4,11 +4,11 @@ package types
 // the current decoded Transaction
 type Context struct {
 	Db Cache
-	Tx *Transaction
+	Tx Tx
 }
 
 // NewContext creates a new context (hence the name)
-func NewContext(db Cache, tx *Transaction) Context {
+func NewContext(db Cache, tx Tx) Context {
 	return Context{
 		Db: db,
 		Tx: tx,

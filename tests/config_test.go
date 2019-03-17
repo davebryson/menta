@@ -1,10 +1,11 @@
-package app
+package test
 
 import (
 	"os"
 	"testing"
 	"time"
 
+	"github.com/davebryson/menta/app"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,13 +19,13 @@ func TestConfig(t *testing.T) {
 	}()
 
 	assert := assert.New(t)
-	cfg, err := LoadConfig("./nothere")
+	cfg, err := app.LoadConfig("./nothere")
 	assert.NotNil(err)
 	assert.Nil(cfg)
 
-	InitTendermint(TestConfigDir)
-	a := NewApp("ex", TestConfigDir)
+	app.InitTendermint(TestConfigDir)
+	a := app.NewApp("ex", TestConfigDir, nil)
 	assert.Equal("tcp://127.0.0.1:26658", a.Config.ProxyApp)
 
-	assert.Panics(func() { NewApp("bad", "./bad") })
+	assert.Panics(func() { app.NewApp("bad", "./bad", nil) })
 }

@@ -5,12 +5,14 @@ import (
 	"sort"
 	"testing"
 
+	sdk "github.com/davebryson/menta/types"
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
 
 // Tests Store and Cache
 func TestStoreBasics(t *testing.T) {
+	sdk.RegisterStandardTypes(cdc)
 	assert := assert.New(t)
 	defer func() {
 		os.RemoveAll("mstate.db")

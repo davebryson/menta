@@ -3,8 +3,9 @@ package store
 import (
 	"fmt"
 
+	"github.com/tendermint/go-amino"
+
 	sdk "github.com/davebryson/menta/types"
-	proto "github.com/golang/protobuf/proto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 
@@ -18,13 +19,13 @@ const (
 )
 
 var commitKey = []byte("/menta/commitinfo")
-
 var _ sdk.Store = (*StateStore)(nil)
+var cdc = amino.NewCodec()
 
 type StateStore struct {
 	db         dbm.DB
 	tree       *iavl.MutableTree
-	CommitInfo sdk.CommitInfo
+	CommitInfo *sdk.CommitInfo
 	numHistory int64
 }
 
@@ -32,6 +33,7 @@ func NewStateStore(dbdir string) *StateStore {
 	db := loadDb(dbdir)
 	ci := loadCommitData(db)
 	tree := iavl.NewMutableTree(db, CacheSize)
+	fmt.Printf("Version here %v\n", ci)
 	tree.LoadVersion(ci.Version)
 
 	return &StateStore{
@@ -123,7 +125,7 @@ func (st *StateStore) Query(req abci.RequestQuery) (res abci.ResponseQuery) {
 	return
 }
 
-func (st *StateStore) Commit() sdk.CommitInfo {
+func (st *StateStore) Commit() *sdk.CommitInfo {
 	hash, version, err := st.tree.SaveVersion()
 
 	// from cosmos-sdk iavlstore - Release an old version of history
@@ -132,16 +134,17 @@ func (st *StateStore) Commit() sdk.CommitInfo {
 		st.tree.DeleteVersion(toRelease)
 	}
 
-	// save commit to db
-	com := sdk.CommitInfo{Version: version, Hash: hash}
-	bits, err := proto.Marshal(&com)
+	latestCommit := &sdk.CommitInfo{Version: version, Hash: hash}
+	bits, err := cdc.MarshalBinaryBare(latestCommit)
 	if err != nil {
 		panic(err)
 	}
+
+	// save commit to db
 	st.db.Set(commitKey, bits)
 
-	st.CommitInfo = com
-	return com
+	st.CommitInfo = latestCommit
+	return latestCommit
 }
 
 func (st *StateStore) RefreshCache() sdk.Cache {
@@ -152,16 +155,18 @@ func (st *StateStore) Close() {
 	st.db.Close()
 }
 
-func loadCommitData(db dbm.DB) sdk.CommitInfo {
+func loadCommitData(db dbm.DB) *sdk.CommitInfo {
 	commitBytes := db.Get(commitKey)
-	var ci sdk.CommitInfo
 	if commitBytes != nil {
-		err := proto.Unmarshal(commitBytes, &ci)
+		ci := new(sdk.CommitInfo)
+		err := cdc.UnmarshalBinaryBare(commitBytes, &ci)
 		if err != nil {
 			panic(err)
 		}
+		return ci
 	}
-	return ci
+	// Return a default
+	return &sdk.CommitInfo{Version: 0, Hash: nil}
 }
 
 func loadDb(dbdir string) dbm.DB {
