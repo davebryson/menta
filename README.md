@@ -14,48 +14,4 @@ Menta intentionally mimics, adapts, and uses code from the Cosmos SDK.  I use th
 
 Get it: `dep ensure -add github.com/davebryson/menta`
 
-Get started:
-Here's an example of the ubiquitous 'counter' application:
-```golang
-package main
-
-import (
-	"encoding/binary"
-
-	menta "github.com/davebryson/menta/app"
-	sdk "github.com/davebryson/menta/types"
-	abci "github.com/tendermint/abci/types"
-)
-
-// Formatting stuff...
-func writeNumber(v uint32) []byte {
-	buf := make([]byte, 4)
-	binary.BigEndian.PutUint32(buf, v)
-	return buf
-}
-
-func main() {
-
-	// Runs tendermint init - "" default to ~/.menta
-	menta.InitTendermint("")
-
-	// Setup the application. "counterapp is the name-o"
-	app := menta.NewApp("counterapp", "")
-
-	// Set up the initial state for the new app - (this is the abci.InitChain())
-	app.OnInitialStart(func(ctx sdk.Context, req abci.RequestInitChain) {
-		ctx.Db.Set([]byte("count"), writeNumber(0))
-	})
-
-	// Add 1 to many transaction callbacks (this is the abci.DeliverTx)
-	app.OnTx("counter", func(ctx sdk.Context) sdk.Result {
-		count := binary.BigEndian.Uint32(ctx.Db.Get([]byte("count")))
-		count += uint32(1)
-		ctx.Db.Set([]byte("count"), writeNumber(count))
-		return sdk.Result{}
-	})
-
-	// Run with the app - embedded with Tendermint
-	app.Run()
-}
-```
+Get started: See `examples`
