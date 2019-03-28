@@ -11,12 +11,16 @@ import (
 )
 
 const (
-	MENTAHOME = ".menta"
-	Home      = "home"
+	// MentaHome is the default home directory for the app
+	MentaHome = ".menta"
+	// Home is the configuration setting name for the home dir
+	Home = "home"
 )
 
-var DefaultHomeDir = os.ExpandEnv(fmt.Sprintf("$HOME/%s", MENTAHOME))
+// DefaultHomeDir is just that
+var DefaultHomeDir = os.ExpandEnv(fmt.Sprintf("$HOME/%s", MentaHome))
 
+// LoadConfig from the given dir
 func LoadConfig(homedir string) (*cfg.Config, error) {
 	if homedir == "" {
 		homedir = DefaultHomeDir

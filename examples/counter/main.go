@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/binary"
+	"fmt"
 
 	menta "github.com/davebryson/menta/app"
+	"github.com/davebryson/menta/codec"
 	sdk "github.com/davebryson/menta/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
@@ -14,29 +16,67 @@ func writeNumber(v uint32) []byte {
 	return buf
 }
 
-//NOTE: This example requires sending the transaction in a serialized Tx. (see types)
+var countKey = []byte("countvalue")
+
+// CounterMsg is the tx msg
+type CounterMsg struct {
+	Value int
+}
+
+// Route ..
+func (msg CounterMsg) Route() string { return "counterapp" }
+
+// Type ..
+func (msg CounterMsg) Type() string { return "" }
+
+// ValidateBasic ..
+func (msg CounterMsg) ValidateBasic() error {
+	if msg.Value < 0 {
+		return fmt.Errorf("Must be >= zero")
+	}
+	return nil
+}
+
 func main() {
+	cdc := codec.New()
+	codec.RegisterCrypto(cdc)
+	sdk.RegisterStandardTypes(cdc)
+	cdc.RegisterConcrete(&CounterMsg{}, "menta/counterMsg", nil)
 
-	// runs tendermint init - "" default to ~/.menta
+	// Runs tendermint init - "" default to ~/.menta
 	menta.InitTendermint("")
-	// setup the app
-	app := menta.NewApp("counterapp", "")
 
-	// initial state callback
+	// Setup the app
+	app := menta.NewApp("counterapp", "", sdk.DefaultJSONTxDecoder(cdc))
+
+	// Setup initial state initial
 	app.OnInitialStart(func(ctx sdk.Context, req abci.RequestInitChain) (res abci.ResponseInitChain) {
-		ctx.Db.Set([]byte("count"), writeNumber(0))
+		// Set the initial count value to 0
+		ctx.Db.Set(countKey, cdc.MustMarshalBinaryBare(0))
 		return
 	})
 
-	// tx callback to increment the count
-	app.OnTx("counter", func(ctx sdk.Context) sdk.Result {
-		count := binary.BigEndian.Uint32(ctx.Db.Get([]byte("count")))
-		count += uint32(1)
-		ctx.Db.Set([]byte("count"), writeNumber(count))
-		return sdk.Result{}
+	// Route that adds to the last state
+	app.Route("counter", func(ctx sdk.Context) sdk.Result {
+		switch msg := ctx.Tx.GetMsg().(type) {
+		case CounterMsg:
+			// decode from storage
+			var v int
+			if err := cdc.UnmarshalBinaryBare(ctx.Db.Get(countKey), &v); err != nil {
+				return sdk.ErrorBadTx()
+			}
+
+			// Add to the state
+			v += msg.Value
+			// Save it
+			ctx.Db.Set(countKey, cdc.MustMarshalBinaryBare(v))
+			return sdk.Result{}
+
+		default:
+			return sdk.ResultError(10, "Unknown message")
+		}
 	})
 
 	// run with the app embedded in Tendermint
 	app.Run()
-
 }

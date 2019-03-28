@@ -1,7 +1,6 @@
 package test
 
 import (
-	"encoding/hex"
 	"fmt"
 	"testing"
 
@@ -16,11 +15,9 @@ func TestCryptoBasics(t *testing.T) {
 	privKey := ed25519.GenPrivKey()
 	pubKey := privKey.PubKey()
 
-	fmt.Printf("Addy: %v\n", pubKey.Address())
+	fmt.Printf("Addy: %v\n", pubKey.Address().String())
 	//
-	fmt.Printf("PubKey: %v\n", pubKey.Bytes())
-	r := hex.EncodeToString(pubKey.Bytes())
-	fmt.Printf("PubKey: %v\n", r)
+	fmt.Printf("PubKey: %x\n", pubKey.Bytes())
 
 	raw := pubKey.(ed25519.PubKeyEd25519)
 	fmt.Printf("W/OPrefix PubKey: %v\n", raw.String())

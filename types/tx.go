@@ -3,7 +3,7 @@ package types
 import (
 	fmt "fmt"
 
-	wire "github.com/tendermint/go-amino"
+	"github.com/davebryson/menta/codec"
 	"github.com/tendermint/tendermint/libs/common"
 )
 
@@ -70,9 +70,10 @@ func (tx StdTx) ValidateBasic() error {
 
 type TxDecoder func(txBytes []byte) (Tx, error)
 
-type TxEncoder func(tx Tx) ([]byte, error)
+//type TxEncoder func(tx Tx) ([]byte, error)
 
-func DefaultJsonTxDecoder(cdc *wire.Codec) TxDecoder {
+// DefaultJSONTxDecoder provides a codec for parsing JSON tx messages
+func DefaultJSONTxDecoder(cdc *codec.Codec) TxDecoder {
 	return func(txBytes []byte) (Tx, error) {
 		var tx = StdTx{}
 		if len(txBytes) == 0 {

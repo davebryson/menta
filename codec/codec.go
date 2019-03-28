@@ -1,4 +1,4 @@
-package crypto
+package codec
 
 import (
 	"os"
@@ -7,13 +7,18 @@ import (
 	cryptoAmino "github.com/tendermint/tendermint/crypto/encoding/amino"
 )
 
-var cdc = amino.NewCodec()
+type Codec = amino.Codec
 
-func init() {
+func New() *Codec {
+	return amino.NewCodec()
+}
+
+func RegisterCrypto(cdc *Codec) {
 	cryptoAmino.RegisterAmino(cdc)
 }
 
-// ShowAminoPrefix - From tendermint/crypto. Shows a nice table of the current crypto prefixes
 func ShowAminoPrefix() {
+	cdc := New()
+	RegisterCrypto(cdc)
 	cdc.PrintTypes(os.Stdout)
 }

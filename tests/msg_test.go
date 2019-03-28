@@ -1,11 +1,29 @@
 package test
 
 import (
+	"fmt"
 	"testing"
 
 	sdk "github.com/davebryson/menta/types"
 	"github.com/stretchr/testify/assert"
 )
+
+/*
+ * Produces a message like this:
+ {
+ "type": "menta/stdtx",
+ "value": {
+  "msg": {
+   "type": "our/hello",
+   "value": {
+    "name": "dave"
+   }
+  },
+  "signer": "",
+  "signature": null
+ }
+}
+*/
 
 func TestMsgEncoding(t *testing.T) {
 	assert := assert.New(t)
@@ -17,7 +35,7 @@ func TestMsgEncoding(t *testing.T) {
 	r, e := cdc.MarshalJSONIndent(tx, "", " ")
 	assert.Nil(e)
 
-	//fmt.Printf("%v", string(r))
+	fmt.Printf("%v", string(r))
 
 	txback := new(sdk.StdTx)
 	err := cdc.UnmarshalJSON(r, txback)

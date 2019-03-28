@@ -35,6 +35,7 @@ type MentaApp struct {
 	queryRouter map[string]store.QueryHandler
 }
 
+//TODO:  Should take codec as a param
 // NewApp returns a new instance of MentaApp where appname is the name of
 // your application, and homedir is the path where menta/tendermint will
 // store all the data and configuration information
@@ -106,6 +107,7 @@ func (app *MentaApp) Route(routeName string, fn sdk.TxHandler) {
 	app.router[routeName] = fn
 }
 
+// RouteQuery : Adds a route for query data from state
 func (app *MentaApp) RouteQuery(path string, fn store.QueryHandler) {
 	app.queryRouter[path] = fn
 }
@@ -188,6 +190,10 @@ func (app *MentaApp) CheckTx(raw []byte) abci.ResponseCheckTx {
 		return abci.ResponseCheckTx{Code: e.Code, Log: e.Log}
 	}
 
+	if err := tx.GetMsg().ValidateBasic(); err != nil {
+		return abci.ResponseCheckTx{Code: 10, Log: err.Error()}
+	}
+
 	ctx := sdk.NewContext(app.checkCache, tx)
 	result := app.checkTxHandler(ctx)
 	return abci.ResponseCheckTx{
@@ -214,6 +220,10 @@ func (app *MentaApp) DeliverTx(raw []byte) abci.ResponseDeliverTx {
 	if err != nil {
 		e := sdk.ErrorBadTx()
 		return abci.ResponseDeliverTx{Code: e.Code, Log: e.Log}
+	}
+
+	if err := tx.GetMsg().ValidateBasic(); err != nil {
+		return abci.ResponseDeliverTx{Code: 10, Log: err.Error()}
 	}
 
 	handler := app.router[tx.GetMsg().Route()]

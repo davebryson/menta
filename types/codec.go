@@ -1,8 +1,8 @@
 package types
 
-import amino "github.com/tendermint/go-amino"
+import "github.com/davebryson/menta/codec"
 
-func RegisterStandardTypes(cdc *amino.Codec) {
+func RegisterStandardTypes(cdc *codec.Codec) {
 	cdc.RegisterInterface((*Msg)(nil), nil)
 	cdc.RegisterInterface((*Tx)(nil), nil)
 	cdc.RegisterConcrete(&StdTx{}, "menta/stdtx", nil)

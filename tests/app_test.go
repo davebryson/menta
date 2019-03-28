@@ -3,6 +3,7 @@ package test
 import (
 	"testing"
 
+	auth "github.com/davebryson/menta/plugins/authenticate"
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
@@ -35,10 +36,10 @@ func TestAppCallbacks(t *testing.T) {
 	assert.Equal(c1.Data, hash1)
 
 	// Call Query & Check the state of bobs account
-	respQ := app.Query(abci.RequestQuery{Path: "/hello/account", Data: bob.GetAddress()})
+	respQ := app.Query(abci.RequestQuery{Path: auth.AuthenticateQueryRoute, Data: bob.GetAddress()})
 	assert.Equal(uint32(0), respQ.Code)
 
-	ba := new(FunnyAcct)
+	ba := new(auth.BasicAccount)
 	err := cdc.UnmarshalJSON(respQ.Value, ba)
 	assert.Nil(err)
 	assert.Equal(bob.GetAddress(), ba.Owner.Bytes())
@@ -46,12 +47,12 @@ func TestAppCallbacks(t *testing.T) {
 
 	// Run validate
 	// bob -> alice
-	msg1 := FunnyMoneyMsg{Recipient: alice.GetAddress(), Amount: uint32(5)}
-	tx, err := bob.SendMoney(msg1)
+	msg1 := auth.SendCoinMsg{Recipient: alice.GetAddress(), Amount: uint32(5)}
+	tx, err := bob.SendMoney(cdc, msg1)
 	assert.Nil(err)
 
 	chtx := app.CheckTx(tx)
-	assert.Equal(abci.ResponseCheckTx{Code: 0}, chtx)
+	assert.Equal(abci.ResponseCheckTx{Code: 0, Log: "Valid signature"}, chtx)
 
 	bb := app.BeginBlock(abci.RequestBeginBlock{})
 	assert.Equal(1, len(bb.Tags))
@@ -59,7 +60,7 @@ func TestAppCallbacks(t *testing.T) {
 
 	// Run Tx handler
 	dtx := app.DeliverTx(tx)
-	assert.Equal(abci.ResponseDeliverTx{Log: "xfer", Code: 0}, dtx)
+	assert.Equal(abci.ResponseDeliverTx{Code: 0}, dtx)
 
 	eb := app.EndBlock(abci.RequestEndBlock{})
 	assert.Equal(1, len(eb.Tags))
@@ -70,24 +71,20 @@ func TestAppCallbacks(t *testing.T) {
 	assert.NotNil(commit.Data)
 	assert.NotEqual(c1.Data, commit.Data)
 
-	// Now state should == 1
-	//respQ = app.Query(abci.RequestQuery{Path: "/key", Data: []byte("count")})
-	//assert.Equal(uint32(1), binary.BigEndian.Uint32(respQ.GetValue()))
-
-	// Check Alices account & balance
-	respQ = app.Query(abci.RequestQuery{Path: "/hello/account", Data: alice.GetAddress()})
+	// Check Alice's account & balance
+	respQ = app.Query(abci.RequestQuery{Path: auth.AuthenticateQueryRoute, Data: alice.GetAddress()})
 	assert.Equal(uint32(0), respQ.Code)
-	al := new(FunnyAcct)
+	al := new(auth.BasicAccount)
 	err = cdc.UnmarshalJSON(respQ.Value, al)
 	assert.Nil(err)
 	assert.Equal(alice.GetAddress(), al.Owner.Bytes())
 	assert.Equal(uint32(5), al.Balance)
 
 	// Check bobs account again
-	respQ = app.Query(abci.RequestQuery{Path: "/hello/account", Data: bob.GetAddress()})
+	respQ = app.Query(abci.RequestQuery{Path: auth.AuthenticateQueryRoute, Data: bob.GetAddress()})
 	assert.Equal(uint32(0), respQ.Code)
 
-	ba = new(FunnyAcct)
+	ba = new(auth.BasicAccount)
 	err = cdc.UnmarshalJSON(respQ.Value, ba)
 	assert.Nil(err)
 	assert.Equal(bob.GetAddress(), ba.Owner.Bytes())

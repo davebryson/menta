@@ -33,7 +33,7 @@ func NewStateStore(dbdir string) *StateStore {
 	db := loadDb(dbdir)
 	ci := loadCommitData(db)
 	tree := iavl.NewMutableTree(db, CacheSize)
-	fmt.Printf("Version here %v\n", ci)
+	//fmt.Printf("Version here %v\n", ci)
 	tree.LoadVersion(ci.Version)
 
 	return &StateStore{
