@@ -16,22 +16,6 @@ func makeTx(val uint32) ([]byte, error) {
 	return sdk.EncodeTx(t)
 }
 
-/*func makeTx(val int64) ([]byte, error) {
-	// Encode the application specific message
-	msg := &CountMsg{Value: val}
-	encodedMsg, err := proto.Marshal(msg)
-	if err != nil {
-		return nil, err
-	}
-	// Create a basic menta transaction
-	t := &sdk.Tx{
-		Route: routeName,
-		Msg:   encodedMsg,
-	}
-	// Encode it for transport
-	return sdk.EncodeTx(t)
-}*/
-
 // SendTx is called from the cli to send a transaction to the node
 func SendTx(val uint32) {
 	msg, err := makeTx(val)
