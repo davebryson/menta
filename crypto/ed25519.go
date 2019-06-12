@@ -100,12 +100,12 @@ func (privKey PrivateKeyEd25519) PubKey() PublicKeyEd25519 {
 }
 
 // Bytes return the the private key as bytes
-func (privKey *PrivateKeyEd25519) Bytes() []byte {
+func (privKey PrivateKeyEd25519) Bytes() []byte {
 	return privKey[:]
 }
 
 // ToHex returns the private key as a hex value
-func (privKey *PrivateKeyEd25519) ToHex() string {
+func (privKey PrivateKeyEd25519) ToHex() string {
 	return hex.EncodeToString(privKey[:])
 }
 
@@ -144,12 +144,12 @@ func (pubKey PublicKeyEd25519) Verify(msg []byte, sig []byte) bool {
 }
 
 // Bytes returns the public key as bytes
-func (pubKey *PublicKeyEd25519) Bytes() []byte {
+func (pubKey PublicKeyEd25519) Bytes() []byte {
 	return pubKey[:]
 }
 
 // ToHex returns the public key as a hex
-func (pubKey *PublicKeyEd25519) ToHex() string {
+func (pubKey PublicKeyEd25519) ToHex() string {
 	return hex.EncodeToString(pubKey[:])
 }
 
