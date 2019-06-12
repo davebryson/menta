@@ -16,5 +16,8 @@ type BeginBlockHandler func(ctx Context, req abci.RequestBeginBlock) abci.Respon
 // TxHandler are for check/delivery transactions. Will be called 1 or more times per block
 type TxHandler func(ctx Context) Result
 
+// QueryHandler for query routes
+type QueryHandler func(key []byte, ctx QueryContext) abci.ResponseQuery
+
 // EndBlockHandler is called after all DeliverTxs have been ran
 type EndBlockHandler func(ctx Context, req abci.RequestEndBlock) abci.ResponseEndBlock

@@ -1,42 +1,58 @@
 package main
 
 import (
-	"encoding/binary"
+	"fmt"
+	"log"
+	"os"
+	"strconv"
 
-	menta "github.com/davebryson/menta/app"
-	sdk "github.com/davebryson/menta/types"
-	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/davebryson/menta/examples/counter/logic"
+	"github.com/urfave/cli"
 )
 
-func writeNumber(v uint32) []byte {
-	buf := make([]byte, 4)
-	binary.BigEndian.PutUint32(buf, v)
-	return buf
-}
-
-//NOTE: This example requires sending the transaction in a serialized Tx. (see types)
+// Simple command line application.  You should use two terminals for this:
+// 1 to execute 'start' to run the tendermint application, and
+// 1 to run the client.
 func main() {
-
-	// runs tendermint init - "" default to ~/.menta
-	menta.InitTendermint("")
-	// setup the app
-	app := menta.NewApp("counterapp", "")
-
-	// initial state callback
-	app.OnInitialStart(func(ctx sdk.Context, req abci.RequestInitChain) (res abci.ResponseInitChain) {
-		ctx.Db.Set([]byte("count"), writeNumber(0))
-		return
-	})
-
-	// tx callback to increment the count
-	app.OnTx("counter", func(ctx sdk.Context) sdk.Result {
-		count := binary.BigEndian.Uint32(ctx.Db.Get([]byte("count")))
-		count += uint32(1)
-		ctx.Db.Set([]byte("count"), writeNumber(count))
-		return sdk.Result{}
-	})
-
-	// run with the app embedded in Tendermint
-	app.Run()
-
+	app := cli.NewApp()
+	app.Name = "counter cli"
+	app.Version = "1.0"
+	app.Description = "Menta counter example"
+	app.Author = "Dave Bryson"
+	app.Commands = []cli.Command{
+		{
+			Name:  "start",
+			Usage: "Start the tendermint node",
+			Action: func(c *cli.Context) error {
+				logic.RunApp()
+				return nil
+			},
+		},
+		{
+			Name:  "send",
+			Usage: "Send a transaction",
+			Action: func(c *cli.Context) error {
+				val := c.Args().Get(0)
+				i, e := strconv.ParseInt(val, 0, 64)
+				if e != nil {
+					fmt.Printf("Error: '%v' is not a valid number\n", val)
+					return nil
+				}
+				logic.SendTx(uint32(i))
+				return nil
+			},
+		},
+		{
+			Name:  "state",
+			Usage: "Check state",
+			Action: func(c *cli.Context) error {
+				logic.CheckState()
+				return nil
+			},
+		},
+	}
+	err := app.Run(os.Args)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

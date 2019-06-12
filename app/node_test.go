@@ -20,9 +20,6 @@ func TestNodeApp(t *testing.T) {
 
 	InitTendermint(TestDir)
 	app := NewApp("testapp", TestDir)
-	//app.OnTx("hello", func(ctx sdk.Context) sdk.Result {
-	//	return sdk.Result{}
-	//})
 
 	node := app.CreateNode()
 	err := node.Start()
@@ -30,12 +27,13 @@ func TestNodeApp(t *testing.T) {
 		t.Error(err)
 	}
 
-	// Adapted from Tendermint/node/node_test...
-	blockCh := make(chan interface{})
-	err = node.EventBus().Subscribe(context.Background(), "node_app_test", types.EventQueryNewBlock, blockCh)
+	// Adapted from Tendermint node_test...
+	blockSub, err := node.EventBus().Subscribe(context.Background(), "node_app_test", types.EventQueryNewBlock)
 	assert.NoError(t, err)
 	select {
-	case <-blockCh:
+	case <-blockSub.Out():
+	case <-blockSub.Cancelled():
+		t.Fatal("blocksSub was cancelled")
 	case <-time.After(10 * time.Second):
 		t.Fatal("timed out waiting for the node to produce a block")
 	}

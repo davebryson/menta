@@ -1,61 +1,48 @@
 # MENTA
-A *simple* framework for creating Tendermint blockchain applications.  
+A *simple* framework for creating Tendermint (permissioned) blockchain applications. 
 
-But what about [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk) ?.  Good question, if you're building a public application or planning to deploy to Cosmos, you should definitely use it.  
+But what about [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk) ?.  Good question. If you're building a public application or planning to deploy to Cosmos, you should definitely use it. 
+
+Menta is designed primarily for enterprise/permissioned blockchains where there's a need to increase the confidence in transactions among parties to the systems.
 
 This framework is for:
-* rapid prototyping and small pilot projects  
-* folks looking to build Tendermint apps not destined for the Cosmos, or 
-* folks wanting to learn *how* a Tendermint ABCI works
+* Enterprise blockchains that desire Byzantine Fault Tolerance 
+* Rapid prototyping and small pilot projects  
+* Folks looking to build Tendermint applications not destined for the Cosmos, or 
+* Folks just wanting to learn *how* a Tendermint ABCI works
 
-Of course, you can always start here and port to the Cosmos SDK later. That's the magic of ABCI
+Menta provides a simple/minimal API on top of Tendermint based on our experience building many Tendermint applications from scratch. It also adopts some of the code and practices from the Cosmos SDK.
 
-**Current supported Tendermint version: 0.29.0**
+Of course, you can always start here and port to the Cosmos SDK later. That's the magic of Tendermint ABCI!
 
-Get it: `dep ensure -add github.com/davebryson/menta`
+## Transaction Codec
+Menta uses protobuf for the base transaction model. It's a minimal model so it's up to the user to decide how to encode/decode application specific messages. The Tx *wrapper* provides a way to route 
+and transport application specific messages to menta handlers.
 
-Get started:
-Here's an example of the ubiquitous 'counter' application:
-```golang
-package main
-
-import (
-	"encoding/binary"
-
-	menta "github.com/davebryson/menta/app"
-	sdk "github.com/davebryson/menta/types"
-	abci "github.com/tendermint/abci/types"
-)
-
-// Formatting stuff...
-func writeNumber(v uint32) []byte {
-	buf := make([]byte, 4)
-	binary.BigEndian.PutUint32(buf, v)
-	return buf
-}
-
-func main() {
-
-	// Runs tendermint init - "" default to ~/.menta
-	menta.InitTendermint("")
-
-	// Setup the application. "counterapp is the name-o"
-	app := menta.NewApp("counterapp", "")
-
-	// Set up the initial state for the new app - (this is the abci.InitChain())
-	app.OnInitialStart(func(ctx sdk.Context, req abci.RequestInitChain) {
-		ctx.Db.Set([]byte("count"), writeNumber(0))
-	})
-
-	// Add 1 to many transaction callbacks (this is the abci.DeliverTx)
-	app.OnTx("counter", func(ctx sdk.Context) sdk.Result {
-		count := binary.BigEndian.Uint32(ctx.Db.Get([]byte("count")))
-		count += uint32(1)
-		ctx.Db.Set([]byte("count"), writeNumber(count))
-		return sdk.Result{}
-	})
-
-	// Run with the app - embedded with Tendermint
-	app.Run()
-}
 ```
+ message Tx {
+   string route = 1;
+   bytes msg = 3;
+   bytes sender = 4;
+   uint64 nonce = 5;
+   bytes sig = 6;
+ }
+```
+
+* **route** is use to route transactions to a specific handler. It can also be used to help the application determine how to decode the `msg` payload.
+* **msg** is an encoded application specific message.  How you encode the msg is up to you.
+* **sender** is an optional field to store the wallet address of the sender
+* **nonce** is an optional field to store a unique transaction nonce. Often used when signing the transaction
+* **sig** is an optional field to store a cryptographic signature
+
+`tx.go` in `types` provides functionality for signing and verifying transactions.
+
+## Setup
+**Current supported Tendermint version: v0.31.7**
+
+Requires Go >= 1.12
+
+Get menta: `go get github.com/davebryson/menta`
+
+## Example
+See `examples/counter` for a complete example of a simple application

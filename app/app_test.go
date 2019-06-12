@@ -9,31 +9,52 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 )
 
-func bigE(v uint32) []byte {
+var (
+	stateKey = []byte("countkey")
+)
+
+const routeName = "counter_test"
+
+func encodeCount(val uint32) []byte {
 	buf := make([]byte, 4)
-	binary.BigEndian.PutUint32(buf, v)
+	binary.BigEndian.PutUint32(buf, val)
 	return buf
 }
 
-func makeTx() ([]byte, error) {
-	t := &sdk.Transaction{Route: "counter_test"}
-	return t.ToBytes()
+func decodeCount(bits []byte) uint32 {
+	return binary.BigEndian.Uint32(bits)
 }
 
-// Test to check all callbacks and handler hooks
-func TestAppCallbacks(t *testing.T) {
-	assert := assert.New(t)
+func makeTx(val uint32) ([]byte, error) {
+	encoded := encodeCount(val)
+	t := &sdk.Tx{Route: routeName, Msg: encoded}
+	return sdk.EncodeTx(t)
+}
 
-	// Setup the app
+func createApp() *MentaApp {
 	app := NewMockApp() // inmemory tree
 
 	// Set up initial chain state
 	app.OnInitialStart(func(ctx sdk.Context, req abci.RequestInitChain) (resp abci.ResponseInitChain) {
-		ctx.Db.Set([]byte("count"), bigE(1))
+		ctx.Db.Set(stateKey, encodeCount(0))
 		return
 	})
-	// Add a validator
+	// Add the tx validator
 	app.OnValidateTx(func(ctx sdk.Context) sdk.Result {
+		// Decode the incoming msg in the Tx
+		msgVal := decodeCount(ctx.Tx.Msg)
+		// Decode the state
+		stateCount := decodeCount(ctx.Db.Get(stateKey))
+
+		// msg should match the expected next state
+		expected := stateCount + uint32(1)
+		if msgVal != expected {
+			return sdk.ResultError(2, "bad count")
+		}
+
+		// Increment the state for other checks
+		ctx.Db.Set(stateKey, encodeCount(msgVal))
+
 		return sdk.Result{
 			Log: "ok",
 		}
@@ -47,14 +68,17 @@ func TestAppCallbacks(t *testing.T) {
 		}
 	})
 	// Add a Tx processor with 'counter_test' route
-	// Increments the count and updates state
-	app.OnTx("counter_test", func(ctx sdk.Context) sdk.Result {
-		count := binary.BigEndian.Uint32(ctx.Db.Get([]byte("count")))
-		count += uint32(1)
-		ctx.Db.Set([]byte("count"), bigE(count))
+	// Increments the count from the msg and updates state
+	app.OnTx(routeName, func(ctx sdk.Context) sdk.Result {
+		ctx.Db.Set(stateKey, ctx.Tx.Msg)
 		return sdk.Result{
 			Log: "increment",
 		}
+	})
+
+	app.OnQuery("/key", func(key []byte, ctx sdk.QueryContext) (resp abci.ResponseQuery) {
+		resp.Value = ctx.Get(key)
+		return
 	})
 	// Add an EndBlock handler
 	app.OnEndBlock(func(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
@@ -64,8 +88,16 @@ func TestAppCallbacks(t *testing.T) {
 			},
 		}
 	})
+	return app
+}
 
-	// Simulate running it
+// Test to check all callbacks and handler hooks
+func TestAppCallbacks(t *testing.T) {
+	assert := assert.New(t)
+
+	app := createApp()
+
+	// --- Simulate running it ---
 
 	// Call InitChain
 	icresult := app.InitChain(abci.RequestInitChain{})
@@ -76,7 +108,7 @@ func TestAppCallbacks(t *testing.T) {
 	// Call Info
 	result := app.Info(abci.RequestInfo{})
 	assert.Equal("mockapp", result.GetData())
-	// Should be 1 because we committed
+	// block height should be 1 because we committed
 	assert.Equal(int64(1), result.GetLastBlockHeight())
 	hash1 := result.GetLastBlockAppHash()
 	assert.NotNil(hash1)
@@ -84,34 +116,54 @@ func TestAppCallbacks(t *testing.T) {
 	assert.Equal(c1.Data, hash1)
 
 	// Call Query & Check the state
-	respQ := app.Query(abci.RequestQuery{Path: "/key", Data: []byte("count")})
+	respQ := app.Query(abci.RequestQuery{Path: "/key", Data: stateKey})
 	assert.Equal(uint32(0), respQ.Code)
-	assert.Equal(uint32(1), binary.BigEndian.Uint32(respQ.GetValue()))
+	assert.Equal(uint32(0), decodeCount(respQ.GetValue()))
 
 	// Run validate
-	tx, err := makeTx()
+	// Ok
+	tx, err := makeTx(1)
 	assert.Nil(err)
 	chtx := app.CheckTx(tx)
 	assert.Equal(abci.ResponseCheckTx{Log: "ok", Code: 0}, chtx)
 
+	// Bad
+	badtx, _ := makeTx(4)
+	chtx = app.CheckTx(badtx)
+	assert.Equal(abci.ResponseCheckTx{Log: "bad count", Code: 2}, chtx)
+
+	// Ok
+	tx1, err := makeTx(2)
+	chtx = app.CheckTx(tx1)
+	assert.Equal(abci.ResponseCheckTx{Log: "ok", Code: 0}, chtx)
+
+	// No committed state yet. So it should still be 0
+	respQ = app.Query(abci.RequestQuery{Path: "/key", Data: stateKey})
+	assert.Equal(uint32(0), respQ.Code)
+	assert.Equal(uint32(0), decodeCount(respQ.GetValue()))
+
+	// --- Process a block
 	bb := app.BeginBlock(abci.RequestBeginBlock{})
 	assert.Equal(1, len(bb.Tags))
 	assert.Equal([]byte("begin"), bb.Tags[0].Key)
 
-	// Run Tx handler
+	// Run Tx handlers
 	dtx := app.DeliverTx(tx)
+	assert.Equal(abci.ResponseDeliverTx{Log: "increment", Code: 0}, dtx)
+	dtx = app.DeliverTx(tx1)
 	assert.Equal(abci.ResponseDeliverTx{Log: "increment", Code: 0}, dtx)
 
 	eb := app.EndBlock(abci.RequestEndBlock{})
 	assert.Equal(1, len(eb.Tags))
 	assert.Equal([]byte("end"), eb.Tags[0].Key)
 
-	// Commit the new state
+	// Commit the new state to storage
 	commit := app.Commit()
 	assert.NotNil(commit.Data)
+	// Should be a new apphash
 	assert.NotEqual(c1.Data, commit.Data)
 
-	// Now state should == 1
-	respQ = app.Query(abci.RequestQuery{Path: "/key", Data: []byte("count")})
-	assert.Equal(uint32(1), binary.BigEndian.Uint32(respQ.GetValue()))
+	// Now committed state should == 2
+	respQ = app.Query(abci.RequestQuery{Path: "/key", Data: stateKey})
+	assert.Equal(uint32(2), decodeCount(respQ.GetValue()))
 }

@@ -27,8 +27,10 @@ type MentaApp struct {
 	onBeginBlockHandler sdk.BeginBlockHandler
 	// EndBlock
 	onEndBlockHandler sdk.EndBlockHandler
-	// DeliverTx
-	router *router
+	// DeliverTx router
+	router map[string]sdk.TxHandler
+	// Query router
+	queryRouter map[string]sdk.QueryHandler
 }
 
 // NewApp returns a new instance of MentaApp where appname is the name of
@@ -47,7 +49,8 @@ func NewApp(appname, homedir string) *MentaApp {
 		Config:       config,
 		deliverCache: state.RefreshCache().(*store.KVCache),
 		checkCache:   state.RefreshCache().(*store.KVCache),
-		router:       NewRouter(),
+		router:       make(map[string]sdk.TxHandler, 0),
+		queryRouter:  make(map[string]sdk.QueryHandler, 0),
 	}
 }
 
@@ -61,13 +64,14 @@ func NewMockApp() *MentaApp {
 		state:        state,
 		deliverCache: state.RefreshCache().(*store.KVCache),
 		checkCache:   state.RefreshCache().(*store.KVCache),
-		router:       NewRouter(),
+		router:       make(map[string]sdk.TxHandler, 0),
+		queryRouter:  make(map[string]sdk.QueryHandler, 0),
 	}
 }
 
 // OnInitialStart : Add this handler if you'd like to do 'something'
 // the very first time Menta starts the new app.  Usually this is used
-// to load initial state...accounts, etc....
+// to load initial application state: accounts, etc....
 func (app *MentaApp) OnInitialStart(fn sdk.InitialStartHandler) {
 	app.onInitialStartHandler = fn
 }
@@ -75,6 +79,7 @@ func (app *MentaApp) OnInitialStart(fn sdk.InitialStartHandler) {
 // OnValidateTx : Add this handler to validate your transactions.  This is NOT
 // required as you can also validate tx in your OnTx handlers if you want.
 // Usually this is a good place to put signature verification.
+// There is only 1 of these per application.
 func (app *MentaApp) OnValidateTx(fn sdk.TxHandler) {
 	app.onValidationHandler = fn
 }
@@ -91,7 +96,12 @@ func (app *MentaApp) OnBeginBlock(fn sdk.BeginBlockHandler) {
 // Transactions also have an 'action' field the can be used to further filter
 // logic to sub functions under a single handler.
 func (app *MentaApp) OnTx(routeName string, fn sdk.TxHandler) {
-	app.router.Add(routeName, fn)
+	app.router[routeName] = fn
+}
+
+// OnQuery : Add one or more handler to query application state.
+func (app *MentaApp) OnQuery(routeName string, fn sdk.QueryHandler) {
+	app.queryRouter[routeName] = fn
 }
 
 // OnEndBlock : Add this handler to do something after a block of
@@ -103,7 +113,7 @@ func (app *MentaApp) OnEndBlock(fn sdk.EndBlockHandler) {
 
 // ---------------------------------------------------------------
 //
-// ABCI Implementations
+// ABCI Callback Implementations
 //
 // ---------------------------------------------------------------
 
@@ -131,9 +141,31 @@ func (app *MentaApp) Info(req abci.RequestInfo) abci.ResponseInfo {
 }
 
 // Query *committed* state in the Tree
+// This calls the handler where the path is the registed query path (handler)
+// and the key is the application specific key in storage
 func (app *MentaApp) Query(query abci.RequestQuery) abci.ResponseQuery {
-	// Delegate to Store
-	return app.state.Query(query)
+	// Get path and key
+	// look up handler by path
+	// send it key and context
+	if query.Data == nil || len(query.Data) == 0 {
+		res := abci.ResponseQuery{}
+		res.Code = sdk.BadQuery
+		res.Log = "Error: query requires a key"
+		return res
+	}
+	queryKey := query.Data
+	queryPath := query.Path
+
+	handler := app.queryRouter[queryPath]
+	if handler == nil {
+		res := abci.ResponseQuery{}
+		res.Code = sdk.BadQuery
+		res.Log = "no query handler found"
+		return res
+	}
+
+	ctx := sdk.NewQueryContext(app.state)
+	return handler(queryKey, ctx)
 }
 
 // CheckTx populates the mempool. Transactions are ran through the OnValidationHandler.
@@ -145,7 +177,7 @@ func (app *MentaApp) CheckTx(raw []byte) abci.ResponseCheckTx {
 		return abci.ResponseCheckTx{}
 	}
 
-	tx, err := sdk.TransactionFromBytes(raw)
+	tx, err := sdk.DecodeTx(raw)
 	if err != nil {
 		e := sdk.ErrorBadTx()
 		return abci.ResponseCheckTx{Code: e.Code, Log: e.Log}
@@ -173,13 +205,13 @@ func (app *MentaApp) BeginBlock(req abci.RequestBeginBlock) (resp abci.ResponseB
 // DeliverTx is the heart of processing transactions leading to a state transistion.
 // This is where the your application logic lives via handlers
 func (app *MentaApp) DeliverTx(raw []byte) abci.ResponseDeliverTx {
-	tx, err := sdk.TransactionFromBytes(raw)
+	tx, err := sdk.DecodeTx(raw)
 	if err != nil {
 		e := sdk.ErrorBadTx()
 		return abci.ResponseDeliverTx{Code: e.Code, Log: e.Log}
 	}
 
-	handler := app.router.GetHandler(tx.Route)
+	handler := app.router[tx.GetRoute()]
 	if handler == nil {
 		e := sdk.ErrorNoHandler()
 		return abci.ResponseDeliverTx{Code: e.Code, Log: e.Log}

@@ -2,9 +2,9 @@ package app
 
 import (
 	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/tendermint/tendermint/abci/server"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/p2p"
@@ -43,22 +43,35 @@ func (app *MentaApp) CreateNode() *node.Node {
 // Run run a standalone / in-process tendermint app
 func (app *MentaApp) Run() {
 	node := app.CreateNode()
-	node.Start()
-
-	cmn.TrapSignal(func() {
-		node.Stop()
+	err := node.Start()
+	if err != nil {
+		logger.Error(err.Error())
+	}
+	TrapSignal(func() {
+		if node.IsRunning() {
+			node.Stop()
+		}
 	})
+	select {}
 }
 
-// RunServer starts a separate server that connects to tendermint
-func (app *MentaApp) RunServer() {
-	srv, err := server.NewServer("0.0.0.0:26658", "socket", app)
-	if err != nil {
-		cmn.Exit(err.Error())
-	}
-	srv.Start()
-
-	cmn.TrapSignal(func() {
-		srv.Stop()
-	})
+// TrapSignal Adapted from Cosmos SDK
+// Note: Must add a select{} after this - see above
+func TrapSignal(cleanupFunc func()) {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		sig := <-sigs
+		if cleanupFunc != nil {
+			cleanupFunc()
+		}
+		exitCode := 128
+		switch sig {
+		case syscall.SIGINT:
+			exitCode += int(syscall.SIGINT)
+		case syscall.SIGTERM:
+			exitCode += int(syscall.SIGTERM)
+		}
+		os.Exit(exitCode)
+	}()
 }

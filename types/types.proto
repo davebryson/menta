@@ -2,14 +2,14 @@ syntax = "proto3";
 package types;
 
 // Transaction model across client and node.
-// 'data' is a binary of application specific content.
-// The application is reponsible for encoding/decoding it.
-message Transaction {
+//
+// 'msg' is a []byte of application specific content, 
+// the application is reponsible for encoding/decoding it.
+message Tx {
   string route = 1;
-  string action = 2;
-  bytes sender = 3;
-  uint64 nonce = 4;
-  bytes data = 5;
+  bytes msg = 3;
+  bytes sender = 4;
+  uint64 nonce = 5;
   bytes sig = 6;
 }
 
@@ -19,9 +19,3 @@ message CommitInfo {
   int64 version = 2;
 }
 
-// Account stored in state
-message AccountBytes {
-  uint64 nonce = 1;
-  uint64 balance = 2;
-  bytes pubkey_bytes = 3;
-}

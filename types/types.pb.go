@@ -19,80 +19,73 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // Transaction model across client and node.
-// 'data' is a binary of application specific content.
-// The application is reponsible for encoding/decoding it.
-type Transaction struct {
+//
+// 'msg' is a []byte of application specific content,
+// the application is reponsible for encoding/decoding it.
+type Tx struct {
 	Route                string   `protobuf:"bytes,1,opt,name=route" json:"route,omitempty"`
-	Action               string   `protobuf:"bytes,2,opt,name=action" json:"action,omitempty"`
-	Sender               []byte   `protobuf:"bytes,3,opt,name=sender,proto3" json:"sender,omitempty"`
-	Nonce                uint64   `protobuf:"varint,4,opt,name=nonce" json:"nonce,omitempty"`
-	Data                 []byte   `protobuf:"bytes,5,opt,name=data,proto3" json:"data,omitempty"`
+	Msg                  []byte   `protobuf:"bytes,3,opt,name=msg,proto3" json:"msg,omitempty"`
+	Sender               []byte   `protobuf:"bytes,4,opt,name=sender,proto3" json:"sender,omitempty"`
+	Nonce                uint64   `protobuf:"varint,5,opt,name=nonce" json:"nonce,omitempty"`
 	Sig                  []byte   `protobuf:"bytes,6,opt,name=sig,proto3" json:"sig,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Transaction) Reset()         { *m = Transaction{} }
-func (m *Transaction) String() string { return proto.CompactTextString(m) }
-func (*Transaction) ProtoMessage()    {}
-func (*Transaction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_03bf5197e350520b, []int{0}
+func (m *Tx) Reset()         { *m = Tx{} }
+func (m *Tx) String() string { return proto.CompactTextString(m) }
+func (*Tx) ProtoMessage()    {}
+func (*Tx) Descriptor() ([]byte, []int) {
+	return fileDescriptor_types_4c15adb8b6351200, []int{0}
 }
-func (m *Transaction) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Transaction.Unmarshal(m, b)
+func (m *Tx) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Tx.Unmarshal(m, b)
 }
-func (m *Transaction) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Transaction.Marshal(b, m, deterministic)
+func (m *Tx) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Tx.Marshal(b, m, deterministic)
 }
-func (dst *Transaction) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Transaction.Merge(dst, src)
+func (dst *Tx) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Tx.Merge(dst, src)
 }
-func (m *Transaction) XXX_Size() int {
-	return xxx_messageInfo_Transaction.Size(m)
+func (m *Tx) XXX_Size() int {
+	return xxx_messageInfo_Tx.Size(m)
 }
-func (m *Transaction) XXX_DiscardUnknown() {
-	xxx_messageInfo_Transaction.DiscardUnknown(m)
+func (m *Tx) XXX_DiscardUnknown() {
+	xxx_messageInfo_Tx.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Transaction proto.InternalMessageInfo
+var xxx_messageInfo_Tx proto.InternalMessageInfo
 
-func (m *Transaction) GetRoute() string {
+func (m *Tx) GetRoute() string {
 	if m != nil {
 		return m.Route
 	}
 	return ""
 }
 
-func (m *Transaction) GetAction() string {
+func (m *Tx) GetMsg() []byte {
 	if m != nil {
-		return m.Action
+		return m.Msg
 	}
-	return ""
+	return nil
 }
 
-func (m *Transaction) GetSender() []byte {
+func (m *Tx) GetSender() []byte {
 	if m != nil {
 		return m.Sender
 	}
 	return nil
 }
 
-func (m *Transaction) GetNonce() uint64 {
+func (m *Tx) GetNonce() uint64 {
 	if m != nil {
 		return m.Nonce
 	}
 	return 0
 }
 
-func (m *Transaction) GetData() []byte {
-	if m != nil {
-		return m.Data
-	}
-	return nil
-}
-
-func (m *Transaction) GetSig() []byte {
+func (m *Tx) GetSig() []byte {
 	if m != nil {
 		return m.Sig
 	}
@@ -112,7 +105,7 @@ func (m *CommitInfo) Reset()         { *m = CommitInfo{} }
 func (m *CommitInfo) String() string { return proto.CompactTextString(m) }
 func (*CommitInfo) ProtoMessage()    {}
 func (*CommitInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_03bf5197e350520b, []int{1}
+	return fileDescriptor_types_4c15adb8b6351200, []int{1}
 }
 func (m *CommitInfo) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CommitInfo.Unmarshal(m, b)
@@ -146,84 +139,24 @@ func (m *CommitInfo) GetVersion() int64 {
 	return 0
 }
 
-// Account stored in state
-type AccountBytes struct {
-	Nonce                uint64   `protobuf:"varint,1,opt,name=nonce" json:"nonce,omitempty"`
-	Balance              uint64   `protobuf:"varint,2,opt,name=balance" json:"balance,omitempty"`
-	PubkeyBytes          []byte   `protobuf:"bytes,3,opt,name=pubkey_bytes,json=pubkeyBytes,proto3" json:"pubkey_bytes,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *AccountBytes) Reset()         { *m = AccountBytes{} }
-func (m *AccountBytes) String() string { return proto.CompactTextString(m) }
-func (*AccountBytes) ProtoMessage()    {}
-func (*AccountBytes) Descriptor() ([]byte, []int) {
-	return fileDescriptor_types_03bf5197e350520b, []int{2}
-}
-func (m *AccountBytes) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AccountBytes.Unmarshal(m, b)
-}
-func (m *AccountBytes) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AccountBytes.Marshal(b, m, deterministic)
-}
-func (dst *AccountBytes) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AccountBytes.Merge(dst, src)
-}
-func (m *AccountBytes) XXX_Size() int {
-	return xxx_messageInfo_AccountBytes.Size(m)
-}
-func (m *AccountBytes) XXX_DiscardUnknown() {
-	xxx_messageInfo_AccountBytes.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_AccountBytes proto.InternalMessageInfo
-
-func (m *AccountBytes) GetNonce() uint64 {
-	if m != nil {
-		return m.Nonce
-	}
-	return 0
-}
-
-func (m *AccountBytes) GetBalance() uint64 {
-	if m != nil {
-		return m.Balance
-	}
-	return 0
-}
-
-func (m *AccountBytes) GetPubkeyBytes() []byte {
-	if m != nil {
-		return m.PubkeyBytes
-	}
-	return nil
-}
-
 func init() {
-	proto.RegisterType((*Transaction)(nil), "types.Transaction")
+	proto.RegisterType((*Tx)(nil), "types.Tx")
 	proto.RegisterType((*CommitInfo)(nil), "types.CommitInfo")
-	proto.RegisterType((*AccountBytes)(nil), "types.AccountBytes")
 }
 
-func init() { proto.RegisterFile("types.proto", fileDescriptor_types_03bf5197e350520b) }
+func init() { proto.RegisterFile("types.proto", fileDescriptor_types_4c15adb8b6351200) }
 
-var fileDescriptor_types_03bf5197e350520b = []byte{
-	// 232 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x4c, 0x90, 0xbb, 0x4e, 0xc4, 0x30,
-	0x10, 0x45, 0xe5, 0xcd, 0x63, 0xc5, 0x24, 0x05, 0xb2, 0x10, 0x72, 0x19, 0x52, 0xa5, 0xa2, 0xa1,
-	0xa3, 0x03, 0x2a, 0x5a, 0x8b, 0x1e, 0x39, 0x59, 0xc3, 0x46, 0x10, 0x4f, 0x64, 0x4f, 0x90, 0xf2,
-	0x15, 0xfc, 0x32, 0xf2, 0x38, 0x11, 0xdb, 0xdd, 0x73, 0xec, 0x19, 0x5d, 0x1b, 0x2a, 0x5a, 0x67,
-	0x1b, 0xee, 0x67, 0x8f, 0x84, 0xb2, 0x60, 0x68, 0x7f, 0x05, 0x54, 0x6f, 0xde, 0xb8, 0x60, 0x06,
-	0x1a, 0xd1, 0xc9, 0x1b, 0x28, 0x3c, 0x2e, 0x64, 0x95, 0x68, 0x44, 0x77, 0xa5, 0x13, 0xc8, 0x5b,
-	0x28, 0xd3, 0xb9, 0x3a, 0xb0, 0xde, 0x28, 0xfa, 0x60, 0xdd, 0xc9, 0x7a, 0x95, 0x35, 0xa2, 0xab,
-	0xf5, 0x46, 0x71, 0x8b, 0x43, 0x37, 0x58, 0x95, 0x37, 0xa2, 0xcb, 0x75, 0x02, 0x29, 0x21, 0x3f,
-	0x19, 0x32, 0xaa, 0xe0, 0xbb, 0x9c, 0xe5, 0x35, 0x64, 0x61, 0xfc, 0x54, 0x25, 0xab, 0x18, 0xdb,
-	0x47, 0x80, 0x17, 0x9c, 0xa6, 0x91, 0x5e, 0xdd, 0x07, 0xc6, 0x99, 0xb3, 0x09, 0x67, 0xae, 0x53,
-	0x6b, 0xce, 0x52, 0xc1, 0xf1, 0xc7, 0xfa, 0xb0, 0xd7, 0xc9, 0xf4, 0x8e, 0xad, 0x81, 0xfa, 0x69,
-	0x18, 0x70, 0x71, 0xf4, 0xbc, 0x92, 0x0d, 0xff, 0x3d, 0xc4, 0x65, 0x0f, 0x05, 0xc7, 0xde, 0x7c,
-	0x9b, 0xe8, 0x0f, 0xec, 0x77, 0x94, 0x77, 0x50, 0xcf, 0x4b, 0xff, 0x65, 0xd7, 0xf7, 0x3e, 0xce,
-	0x6f, 0xaf, 0xaa, 0x92, 0xe3, 0x95, 0x7d, 0xc9, 0xdf, 0xf7, 0xf0, 0x17, 0x00, 0x00, 0xff, 0xff,
-	0x9b, 0x74, 0x11, 0xb5, 0x4d, 0x01, 0x00, 0x00,
+var fileDescriptor_types_4c15adb8b6351200 = []byte{
+	// 174 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x34, 0xce, 0x3d, 0x8b, 0x02, 0x31,
+	0x10, 0xc6, 0x71, 0xb2, 0x6f, 0xc7, 0xcd, 0x6d, 0x71, 0x0c, 0xc7, 0x31, 0x65, 0xd8, 0x2a, 0x95,
+	0x8d, 0x9d, 0xad, 0x95, 0x6d, 0xf0, 0x0b, 0xf8, 0x12, 0x77, 0x03, 0x6e, 0x66, 0xc9, 0x44, 0xd1,
+	0x6f, 0x2f, 0x9b, 0xd5, 0xee, 0xf9, 0x05, 0xfe, 0x64, 0xe0, 0x27, 0x3d, 0x27, 0x27, 0xab, 0x29,
+	0x72, 0x62, 0xac, 0x33, 0xba, 0x2b, 0x14, 0xfb, 0x07, 0xfe, 0x41, 0x1d, 0xf9, 0x96, 0x1c, 0x29,
+	0xad, 0xcc, 0xb7, 0x5d, 0x80, 0xbf, 0x50, 0x8e, 0xd2, 0x53, 0xa9, 0x95, 0x69, 0xed, 0x3c, 0xf1,
+	0x1f, 0x1a, 0x71, 0xe1, 0xec, 0x22, 0x55, 0xf9, 0xf1, 0xad, 0xb9, 0x0f, 0x1c, 0x4e, 0x8e, 0x6a,
+	0xad, 0x4c, 0x65, 0x17, 0xcc, 0xbd, 0xf8, 0x9e, 0x9a, 0xa5, 0x17, 0xdf, 0x77, 0x1b, 0x80, 0x2d,
+	0x8f, 0xa3, 0x4f, 0xbb, 0x70, 0x61, 0x44, 0xa8, 0x86, 0x83, 0x0c, 0xf9, 0xd3, 0xd6, 0xe6, 0x8d,
+	0x04, 0x5f, 0x77, 0x17, 0xc5, 0x73, 0xa0, 0x42, 0x2b, 0x53, 0xda, 0x0f, 0x8f, 0x4d, 0xbe, 0x7b,
+	0xfd, 0x0a, 0x00, 0x00, 0xff, 0xff, 0xc2, 0x5e, 0x94, 0x0d, 0xc6, 0x00, 0x00, 0x00,
 }

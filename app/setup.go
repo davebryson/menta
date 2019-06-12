@@ -21,9 +21,6 @@ func InitTendermint(homedir string) {
 	if err := createConfig(homedir); err != nil {
 		panic(err)
 	}
-	//if !cmn.FileExists(filepath.Join(homedir, "config", "config.toml")) {
-	//	createConfig(homedir)
-	//}
 }
 
 // Code from tendermint init...
@@ -84,7 +81,5 @@ func createConfig(homedir string) error {
 		}
 		logger.Info("Generated genesis file", "path", genFile)
 	}
-
 	return nil
-
 }

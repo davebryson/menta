@@ -74,6 +74,7 @@ func getQueryHeight(store *StateStore, queryVersion int64) int64 {
 }
 
 // Query returns a value and/or proof from the tree.
+// TODO: This is not really exposed to the app yet via the Query Context
 func (st *StateStore) Query(req abci.RequestQuery) (res abci.ResponseQuery) {
 	// This code is all adapted from the Cosmos SDK
 	if req.Data == nil || len(req.Data) == 0 {
