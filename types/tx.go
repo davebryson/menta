@@ -24,9 +24,10 @@ func EncodeTx(tx *Tx) ([]byte, error) {
 // Hash the tx for signing
 func (tx *Tx) hashMsg() ([]byte, error) {
 	bits, err := proto.Marshal(&Tx{
-		Route: tx.Route,
-		Nonce: tx.Nonce,
-		Msg:   tx.Msg,
+		Sender: tx.Sender,
+		Route:  tx.Route,
+		Nonce:  tx.Nonce,
+		Msg:    tx.Msg,
 	})
 	if err != nil {
 		return nil, err

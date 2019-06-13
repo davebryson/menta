@@ -172,19 +172,28 @@ func (app *MentaApp) Query(query abci.RequestQuery) abci.ResponseQuery {
 // If the pass, they will be considered for inclusion in a block and processed via
 // DeliverTx
 func (app *MentaApp) CheckTx(raw []byte) abci.ResponseCheckTx {
-	if app.onValidationHandler == nil {
-		// Nothing to do!
-		return abci.ResponseCheckTx{}
-	}
-
+	// Decode the tx
 	tx, err := sdk.DecodeTx(raw)
 	if err != nil {
 		e := sdk.ErrorBadTx()
 		return abci.ResponseCheckTx{Code: e.Code, Log: e.Log}
 	}
 
+	// Check there's actually a tx handler for the call. If not, disgard the tx
+	handler := app.router[tx.GetRoute()]
+	if handler == nil {
+		e := sdk.ErrorNoHandler()
+		return abci.ResponseCheckTx{Code: e.Code, Log: e.Log}
+	}
+
+	if app.onValidationHandler == nil {
+		// Nothing to do!
+		return abci.ResponseCheckTx{}
+	}
+
 	ctx := sdk.NewContext(app.checkCache, tx)
 	result := app.onValidationHandler(ctx)
+
 	return abci.ResponseCheckTx{
 		Code: result.Code,
 		Log:  result.Log,
@@ -211,11 +220,8 @@ func (app *MentaApp) DeliverTx(raw []byte) abci.ResponseDeliverTx {
 		return abci.ResponseDeliverTx{Code: e.Code, Log: e.Log}
 	}
 
+	// Handler existence is checked in checkTx
 	handler := app.router[tx.GetRoute()]
-	if handler == nil {
-		e := sdk.ErrorNoHandler()
-		return abci.ResponseDeliverTx{Code: e.Code, Log: e.Log}
-	}
 
 	ctx := sdk.NewContext(app.deliverCache, tx)
 	result := handler(ctx)

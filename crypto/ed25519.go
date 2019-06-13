@@ -111,6 +111,12 @@ func (privKey PrivateKeyEd25519) ToHex() string {
 
 // ---- PublicKey ----
 
+func PublicKeyFromBytes(bits []byte) (PublicKeyEd25519, error) {
+	var pkBits [PublicKeySize]byte
+	copy(pkBits[:], bits)
+	return PublicKeyEd25519(pkBits), nil
+}
+
 // PublicKeyFromHex decodes a hex version of the public key into PublicKeyEd25519
 func PublicKeyFromHex(h string) (PublicKeyEd25519, error) {
 	bits, err := hex.DecodeString(h)
@@ -121,17 +127,20 @@ func PublicKeyFromHex(h string) (PublicKeyEd25519, error) {
 		return PublicKeyEd25519{}, errors.New("publickey: not a valid public key size")
 	}
 
-	var pkBits [PublicKeySize]byte
-	copy(pkBits[:], bits)
-	return PublicKeyEd25519(pkBits), nil
+	return PublicKeyFromBytes(bits)
+}
+
+// PublicKeyBytesToAddress returns the address for the bytes version of the public key
+func PublicKeyBytesToAddress(pubKeyBits []byte) Address {
+	results := tmhash.SumTruncated(pubKeyBits)
+	var addressBits [AddressSize]byte
+	copy(addressBits[:], results)
+	return Address(addressBits)
 }
 
 // ToAddress returns the associated address for the the key
 func (pubKey PublicKeyEd25519) ToAddress() Address {
-	results := tmhash.SumTruncated(pubKey[:])
-	var addressBits [AddressSize]byte
-	copy(addressBits[:], results)
-	return Address(addressBits)
+	return PublicKeyBytesToAddress(pubKey[:])
 }
 
 // Verify a signature and message
