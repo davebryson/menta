@@ -20,7 +20,6 @@ func GenerateJSONAccounts(num int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return data, nil
 }
 
@@ -31,7 +30,6 @@ func LoadJSONAccounts(data []byte) ([]Account, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	accts := make([]Account, 0)
 	for _, sk := range list {
 		k, err := crypto.PrivateKeyFromHex(sk)
@@ -40,6 +38,5 @@ func LoadJSONAccounts(data []byte) ([]Account, error) {
 		}
 		accts = append(accts, Account{Pubkey: k.PubKey().Bytes(), Nonce: 0})
 	}
-
 	return accts, nil
 }

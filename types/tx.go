@@ -26,8 +26,8 @@ func (tx *Tx) hashMsg() ([]byte, error) {
 	bits, err := proto.Marshal(&Tx{
 		Sender: tx.Sender,
 		Route:  tx.Route,
-		Nonce:  tx.Nonce,
 		Msg:    tx.Msg,
+		Nonce:  tx.Nonce,
 	})
 	if err != nil {
 		return nil, err
