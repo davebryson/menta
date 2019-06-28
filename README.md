@@ -24,7 +24,7 @@ and transport application specific messages to menta handlers.
    string route = 1;
    bytes msg = 3;
    bytes sender = 4;
-   uint64 nonce = 5;
+   bytes nonce = 5;
    bytes sig = 6;
  }
 ```
