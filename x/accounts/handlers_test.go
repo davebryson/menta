@@ -36,7 +36,7 @@ func TestVerifyHandler(t *testing.T) {
 	assert.Nil(err)
 
 	// Good check
-	resp := app.CheckTx(t1Bits)
+	resp := app.CheckTx(abci.RequestCheckTx{Tx: t1Bits})
 	assert.Equal(uint32(0), resp.Code)
 
 	// Bad route
@@ -45,7 +45,7 @@ func TestVerifyHandler(t *testing.T) {
 	t1Bits, err = sdk.EncodeTx(t1)
 	assert.Nil(err)
 
-	resp = app.CheckTx(t1Bits)
+	resp = app.CheckTx(abci.RequestCheckTx{Tx: t1Bits})
 	assert.Equal(uint32(1), resp.Code)
 	assert.Equal("Handler not found", resp.Log)
 
@@ -56,7 +56,7 @@ func TestVerifyHandler(t *testing.T) {
 	t2Bits, err := sdk.EncodeTx(t2)
 	assert.Nil(err)
 
-	resp2 := app.CheckTx(t2Bits)
+	resp2 := app.CheckTx(abci.RequestCheckTx{Tx: t2Bits})
 	assert.Equal(uint32(2), resp2.Code)
 
 	// Bad signature
@@ -66,6 +66,6 @@ func TestVerifyHandler(t *testing.T) {
 	t1Bits, err = sdk.EncodeTx(t1)
 	assert.Nil(err)
 
-	resp = app.CheckTx(t1Bits)
+	resp = app.CheckTx(abci.RequestCheckTx{Tx: t1Bits})
 	assert.Equal(uint32(3), resp.Code)
 }

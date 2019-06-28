@@ -62,9 +62,9 @@ func createApp() *MentaApp {
 	// Add a BeginBlock handler
 	app.OnBeginBlock(func(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
 		return abci.ResponseBeginBlock{
-			Tags: sdk.Tags{
-				sdk.Tag{Key: []byte("begin"), Value: []byte("av")},
-			},
+			//Tags: sdk.Tags{
+			//	sdk.Tag{Key: []byte("begin"), Value: []byte("av")},
+			//},
 		}
 	})
 	// Add a Tx processor with 'counter_test' route
@@ -83,9 +83,9 @@ func createApp() *MentaApp {
 	// Add an EndBlock handler
 	app.OnEndBlock(func(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
 		return abci.ResponseEndBlock{
-			Tags: sdk.Tags{
-				sdk.Tag{Key: []byte("end"), Value: []byte("av")},
-			},
+			//Tags: sdk.Tags{
+			//	sdk.Tag{Key: []byte("end"), Value: []byte("av")},
+			//},
 		}
 	})
 	return app
@@ -124,17 +124,17 @@ func TestAppCallbacks(t *testing.T) {
 	// Ok
 	tx, err := makeTx(1)
 	assert.Nil(err)
-	chtx := app.CheckTx(tx)
+	chtx := app.CheckTx(abci.RequestCheckTx{Tx: tx})
 	assert.Equal(abci.ResponseCheckTx{Log: "ok", Code: 0}, chtx)
 
 	// Bad
 	badtx, _ := makeTx(4)
-	chtx = app.CheckTx(badtx)
+	chtx = app.CheckTx(abci.RequestCheckTx{Tx: badtx})
 	assert.Equal(abci.ResponseCheckTx{Log: "bad count", Code: 2}, chtx)
 
 	// Ok
 	tx1, err := makeTx(2)
-	chtx = app.CheckTx(tx1)
+	chtx = app.CheckTx(abci.RequestCheckTx{Tx: tx1})
 	assert.Equal(abci.ResponseCheckTx{Log: "ok", Code: 0}, chtx)
 
 	// No committed state yet. So it should still be 0
@@ -143,19 +143,19 @@ func TestAppCallbacks(t *testing.T) {
 	assert.Equal(uint32(0), decodeCount(respQ.GetValue()))
 
 	// --- Process a block
-	bb := app.BeginBlock(abci.RequestBeginBlock{})
-	assert.Equal(1, len(bb.Tags))
-	assert.Equal([]byte("begin"), bb.Tags[0].Key)
+	//bb := app.BeginBlock(abci.RequestBeginBlock{})
+	//assert.Equal(1, len(bb.Tags))
+	//assert.Equal([]byte("begin"), bb.Tags[0].Key)
 
 	// Run Tx handlers
-	dtx := app.DeliverTx(tx)
+	dtx := app.DeliverTx(abci.RequestDeliverTx{Tx: tx})
 	assert.Equal(abci.ResponseDeliverTx{Log: "increment", Code: 0}, dtx)
-	dtx = app.DeliverTx(tx1)
+	dtx = app.DeliverTx(abci.RequestDeliverTx{Tx: tx1})
 	assert.Equal(abci.ResponseDeliverTx{Log: "increment", Code: 0}, dtx)
 
-	eb := app.EndBlock(abci.RequestEndBlock{})
-	assert.Equal(1, len(eb.Tags))
-	assert.Equal([]byte("end"), eb.Tags[0].Key)
+	//eb := app.EndBlock(abci.RequestEndBlock{})
+	//assert.Equal(1, len(eb.Tags))
+	//assert.Equal([]byte("end"), eb.Tags[0].Key)
 
 	// Commit the new state to storage
 	commit := app.Commit()

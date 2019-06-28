@@ -171,9 +171,9 @@ func (app *MentaApp) Query(query abci.RequestQuery) abci.ResponseQuery {
 // CheckTx populates the mempool. Transactions are ran through the OnValidationHandler.
 // If the pass, they will be considered for inclusion in a block and processed via
 // DeliverTx
-func (app *MentaApp) CheckTx(raw []byte) abci.ResponseCheckTx {
+func (app *MentaApp) CheckTx(checkTx abci.RequestCheckTx) abci.ResponseCheckTx {
 	// Decode the tx
-	tx, err := sdk.DecodeTx(raw)
+	tx, err := sdk.DecodeTx(checkTx.Tx)
 	if err != nil {
 		e := sdk.ErrorBadTx()
 		return abci.ResponseCheckTx{Code: e.Code, Log: e.Log}
@@ -198,7 +198,6 @@ func (app *MentaApp) CheckTx(raw []byte) abci.ResponseCheckTx {
 		Code: result.Code,
 		Log:  result.Log,
 		Data: result.Data,
-		Tags: result.Tags,
 	}
 }
 
@@ -213,8 +212,8 @@ func (app *MentaApp) BeginBlock(req abci.RequestBeginBlock) (resp abci.ResponseB
 
 // DeliverTx is the heart of processing transactions leading to a state transistion.
 // This is where the your application logic lives via handlers
-func (app *MentaApp) DeliverTx(raw []byte) abci.ResponseDeliverTx {
-	tx, err := sdk.DecodeTx(raw)
+func (app *MentaApp) DeliverTx(dtx abci.RequestDeliverTx) abci.ResponseDeliverTx {
+	tx, err := sdk.DecodeTx(dtx.Tx)
 	if err != nil {
 		e := sdk.ErrorBadTx()
 		return abci.ResponseDeliverTx{Code: e.Code, Log: e.Log}
@@ -230,7 +229,6 @@ func (app *MentaApp) DeliverTx(raw []byte) abci.ResponseDeliverTx {
 		Code: result.Code,
 		Log:  result.Log,
 		Data: result.Data,
-		Tags: result.Tags,
 	}
 }
 
