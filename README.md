@@ -1,9 +1,9 @@
 # MENTA
-A *simple* framework for creating Tendermint (permissioned) blockchain applications. 
+A *super simple* framework for creating Tendermint (permissioned) blockchain applications. 
 
-But what about [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk) ?.  Good question. If you're building a public application or planning to deploy to Cosmos, you should definitely use it. 
+But what about [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk) ?  Good question. If you're building a public application or planning to deploy to Cosmos, you should definitely use it. 
 
-Menta is designed primarily for enterprise/permissioned blockchains where there's a need to increase the confidence in transactions among parties to the systems.
+Menta is designed primarily for enterprise/permissioned blockchains where there's a need to increase confidence in transactions among parties to the systems.
 
 This framework is for:
 * Enterprise blockchains that desire Byzantine Fault Tolerance 
@@ -16,8 +16,7 @@ Menta provides a simple/minimal API on top of Tendermint based on our experience
 Of course, you can always start here and port to the Cosmos SDK later. That's the magic of Tendermint ABCI!
 
 ## Transaction Codec
-Menta uses protobuf for the base transaction model. It's a minimal model so it's up to the user to decide how to encode/decode application specific messages. The Tx *wrapper* provides a way to route 
-and transport application specific messages to menta handlers.
+Menta uses protobuf for the base transaction model. It's a minimal model leaving it up to the user to decide how to encode/decode application specific messages (msg field). The Tx *wrapper* provides a way to route and transport application specific messages to menta handlers.
 
 ```
  message Tx {
@@ -42,7 +41,7 @@ and transport application specific messages to menta handlers.
 
 Requires Go >= 1.12
 
-Get menta: `go get github.com/davebryson/menta`
+Get menta: `go get -u github.com/davebryson/menta`
 
 ## Example
 See `examples/counter` for a complete example of a simple application
