@@ -36,14 +36,12 @@ func TestTx(t *testing.T) {
 	assert.Equal([]byte("random"), txBack.Nonce)
 	assert.Equal([]byte("hello"), txBack.Msg)
 	assert.True(txBack.Verify(bob.PubKey()))
-	assert.Equal(bob.PubKey().ToAddress().Bytes(), txBack.Sender)
 
 	// Backwards from hex of private key
 	bobSecretHex := bob.ToHex()
 	bobBack, err := crypto.PrivateKeyFromHex(bobSecretHex)
 	assert.Nil(err)
 	assert.Equal(bob.PubKey().Bytes(), bobBack.PubKey().Bytes())
-	assert.Equal(bob.PubKey().ToAddress(), bobBack.PubKey().ToAddress())
 
 	// Backward from pubkey hex
 	bobPubHex := bob.PubKey().ToHex()
@@ -60,8 +58,6 @@ func TestWalletIntegration(t *testing.T) {
 
 	bobPub := sk.PubKey().ToHex()
 	assert.Equal(bobPub, jsWalletPubKey)
-	bobAddy := sk.PubKey().ToAddress().ToHex()
-	assert.Equal(bobAddy, jsWalletAddress)
 
 	// Decode the msg into bytes
 	bits, e := hex.DecodeString(jsWalletSignedMsg)

@@ -36,7 +36,7 @@ func LoadJSONAccounts(data []byte) ([]Account, error) {
 		if err != nil {
 			return accts, err
 		}
-		accts = append(accts, Account{Pubkey: k.PubKey().Bytes(), Nonce: 0})
+		accts = append(accts, Account{Pubkey: k.PubKey().Bytes()})
 	}
 	return accts, nil
 }

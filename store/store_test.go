@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	abci "github.com/tendermint/tendermint/abci/types"
 )
 
 // Tests Store and Cache
@@ -36,6 +35,11 @@ func TestStoreBasics(t *testing.T) {
 	assert.Equal(info.Version, st.CommitInfo.Version)
 	assert.Equal(info.Hash, st.CommitInfo.Hash)
 
+	dcache.Delete([]byte("name"))
+	//dcache.ApplyToState()
+
+	assert.Equal([]byte(nil), dcache.Get([]byte("name")))
+
 	st.Close()
 }
 
@@ -49,17 +53,21 @@ func TestStoreQueries(t *testing.T) {
 	dcache.ApplyToState()
 	st.Commit()
 
-	rq1 := st.Query(abci.RequestQuery{Path: "/key", Data: []byte("name1")})
-	assert.NotNil(rq1)
-	assert.Equal(uint32(0), rq1.Code)
-	assert.Equal([]byte("dave"), rq1.Value)
+	rq1value := st.Get([]byte("name1"))
+	assert.Equal([]byte("dave"), rq1value)
 
 	//root := commit.Hash
 
 	// Try proof
-	rq2 := st.Query(abci.RequestQuery{Path: "/key", Data: []byte("name1"), Prove: true})
-	assert.NotNil(rq2)
-	assert.NotNil(rq2.Proof)
+	//rqvalue, proof, err := st.Query([]byte("name1"), 0, true)
+	//assert.Nil(err)
+	//assert.NotNil(proof)
+	//assert.NotNil(rqvalue)
+	//proof.Ops[0].
+
+	//rq2 := st.Query(abci.RequestQuery{Path: "/key", Data: []byte("name1"), Prove: true})
+	//assert.NotNil(rq2)
+	//assert.NotNil(rq2.Proof)
 	// TODO: Verify the proof
 	//fmt.Printf("Proof: %v\n", rq2.Proof)
 }
@@ -117,13 +125,13 @@ func TestStoreIter(t *testing.T) {
 		return false
 	}
 
-	cache.IterateKeyRange([]byte("g1/"), []byte("g2/"), true, viewer)
+	cache.Iterate([]byte("g1/"), []byte("g2/"), true, viewer)
 	assert.Equal(4, len(viewed))
 	assert.Equal("g1/s1", viewed[0])
 	assert.Equal("g1/s4", viewed[3])
 
 	allgs := []string{}
-	cache.IterateKeyRange([]byte("g"), []byte("h"), true, func(key []byte, value []byte) bool {
+	cache.Iterate([]byte("g"), []byte("h"), true, func(key []byte, value []byte) bool {
 		allgs = append(allgs, string(key))
 		return false
 	})

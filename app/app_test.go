@@ -35,16 +35,16 @@ func createApp() *MentaApp {
 	app := NewMockApp() // inmemory tree
 
 	// Set up initial chain state
-	app.OnInitialStart(func(ctx sdk.Context, req abci.RequestInitChain) (resp abci.ResponseInitChain) {
-		ctx.Db.Set(stateKey, encodeCount(0))
+	app.OnInitChain(func(store sdk.RWStore, req abci.RequestInitChain) (resp abci.ResponseInitChain) {
+		store.Set(stateKey, encodeCount(0))
 		return
 	})
 	// Add the tx validator
-	app.OnValidateTx(func(ctx sdk.Context) sdk.Result {
+	app.OnValidateTx(func(store sdk.RWStore, tx *sdk.Tx) sdk.Result {
 		// Decode the incoming msg in the Tx
-		msgVal := decodeCount(ctx.Tx.Msg)
+		msgVal := decodeCount(tx.Msg)
 		// Decode the state
-		stateCount := decodeCount(ctx.Db.Get(stateKey))
+		stateCount := decodeCount(store.Get(stateKey))
 
 		// msg should match the expected next state
 		expected := stateCount + uint32(1)
@@ -53,14 +53,14 @@ func createApp() *MentaApp {
 		}
 
 		// Increment the state for other checks
-		ctx.Db.Set(stateKey, encodeCount(msgVal))
+		store.Set(stateKey, encodeCount(msgVal))
 
 		return sdk.Result{
 			Log: "ok",
 		}
 	})
 	// Add a BeginBlock handler
-	app.OnBeginBlock(func(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
+	app.OnBeginBlock(func(store sdk.RWStore, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
 		return abci.ResponseBeginBlock{
 			//Tags: sdk.Tags{
 			//	sdk.Tag{Key: []byte("begin"), Value: []byte("av")},
@@ -69,19 +69,19 @@ func createApp() *MentaApp {
 	})
 	// Add a Tx processor with 'counter_test' route
 	// Increments the count from the msg and updates state
-	app.OnTx(routeName, func(ctx sdk.Context) sdk.Result {
-		ctx.Db.Set(stateKey, ctx.Tx.Msg)
+	app.OnTx(routeName, func(store sdk.RWStore, tx *sdk.Tx) sdk.Result {
+		store.Set(stateKey, tx.Msg)
 		return sdk.Result{
 			Log: "increment",
 		}
 	})
 
-	app.OnQuery("/key", func(key []byte, ctx sdk.QueryContext) (resp abci.ResponseQuery) {
-		resp.Value = ctx.Get(key)
-		return
+	app.OnQuery("/key", func(store sdk.StoreReader, key []byte) ([]byte, error) {
+		resp := store.Get(key)
+		return resp, nil
 	})
 	// Add an EndBlock handler
-	app.OnEndBlock(func(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
+	app.OnEndBlock(func(store sdk.RWStore, req abci.RequestEndBlock) abci.ResponseEndBlock {
 		return abci.ResponseEndBlock{
 			//Tags: sdk.Tags{
 			//	sdk.Tag{Key: []byte("end"), Value: []byte("av")},

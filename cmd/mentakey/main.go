@@ -23,10 +23,8 @@ func makeKeys(num int) []byte {
 	for i := 0; i < num; i++ {
 		sk := crypto.GeneratePrivateKey()
 		v := key{
-			Type:       "Ed25519",
 			Privatekey: sk.ToHex(),
 			Publickey:  sk.PubKey().ToHex(),
-			Address:    sk.PubKey().ToAddress().ToHex(),
 		}
 		keys = append(keys, v)
 	}

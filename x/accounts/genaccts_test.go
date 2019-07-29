@@ -24,7 +24,7 @@ func TestJsonStuff(t *testing.T) {
 	for _, a := range b {
 		pk, err := crypto.PublicKeyFromBytes(a.Pubkey)
 		assert.Nil(err)
-		address := pk.ToAddress().ToHex()
+		address := AddressFromPubKey(pk).ToHex()
 		table[address] = a
 	}
 
@@ -34,7 +34,7 @@ func TestJsonStuff(t *testing.T) {
 	sig := bob.Sign([]byte("hello"))
 
 	// Now look up accounts by address
-	bobAddress := bob.PubKey().ToAddress().ToHex()
+	bobAddress := AddressFromPubKey(bob.PubKey()).ToHex()
 	k := table[bobAddress].Pubkey
 
 	// Verify signature via the account public key

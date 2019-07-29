@@ -13,6 +13,7 @@ import (
 
 var chainIdPrefix = "menta-chain-%v"
 
+// TODO:  Pass a []byte of account data to genesis.appstate?
 func InitTendermint(homedir string) {
 	if homedir == "" {
 		homedir = DefaultHomeDir

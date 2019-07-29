@@ -5,19 +5,9 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 )
 
-// InitialStartHandler is called once the first time the application is ran.
-// This is the place to load initial state in your application as it is
-// passed the store to commit to tree state
-type InitialStartHandler func(ctx Context, req abci.RequestInitChain) abci.ResponseInitChain
+type InitChainHandler func(store RWStore, req abci.RequestInitChain) abci.ResponseInitChain
+type TxHandler func(store RWStore, tx *Tx) Result
+type QueryHandler func(store StoreReader, key []byte) ([]byte, error)
 
-// BeginBlockHandler is called before DeliverTx
-type BeginBlockHandler func(ctx Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock
-
-// TxHandler are for check/delivery transactions. Will be called 1 or more times per block
-type TxHandler func(ctx Context) Result
-
-// QueryHandler for query routes
-type QueryHandler func(key []byte, ctx QueryContext) abci.ResponseQuery
-
-// EndBlockHandler is called after all DeliverTxs have been ran
-type EndBlockHandler func(ctx Context, req abci.RequestEndBlock) abci.ResponseEndBlock
+type BeginBlockHandler func(store RWStore, req abci.RequestBeginBlock) abci.ResponseBeginBlock
+type EndBlockHandler func(store RWStore, req abci.RequestEndBlock) abci.ResponseEndBlock

@@ -22,12 +22,13 @@ func EncodeTx(tx *Tx) ([]byte, error) {
 }
 
 // Hash the tx for signing
-func (tx *Tx) hashMsg() ([]byte, error) {
+func (tx *Tx) hash() ([]byte, error) {
 	bits, err := proto.Marshal(&Tx{
-		Sender: tx.Sender,
-		Route:  tx.Route,
-		Msg:    tx.Msg,
-		Nonce:  tx.Nonce,
+		Sender:  tx.Sender,
+		Route:   tx.Route,
+		Msgtype: tx.Msgtype,
+		Msg:     tx.Msg,
+		Nonce:   tx.Nonce,
 	})
 	if err != nil {
 		return nil, err
@@ -38,8 +39,8 @@ func (tx *Tx) hashMsg() ([]byte, error) {
 
 // Sign a transaction
 func (tx *Tx) Sign(sk crypto.PrivateKeyEd25519) error {
-	tx.Sender = sk.PubKey().ToAddress().Bytes()
-	msgHash, err := tx.hashMsg()
+	//tx.Sender = sk.PubKey().ToAddress().Bytes()
+	msgHash, err := tx.hash()
 	if err != nil {
 		return err
 	}
@@ -49,7 +50,7 @@ func (tx *Tx) Sign(sk crypto.PrivateKeyEd25519) error {
 
 // Verify a Tx against a given public key
 func (tx *Tx) Verify(pubKey crypto.PublicKeyEd25519) bool {
-	msg, err := tx.hashMsg()
+	msg, err := tx.hash()
 	if err != nil {
 		return false
 	}

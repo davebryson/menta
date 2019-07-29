@@ -17,12 +17,12 @@ func TestVerifyHandler(t *testing.T) {
 	aliceSk := crypto.GeneratePrivateKey()
 
 	app := menta.NewMockApp()
-	app.OnInitialStart(func(ctx sdk.Context, req abci.RequestInitChain) (resp abci.ResponseInitChain) {
-		SetAccount(ctx, Account{Pubkey: bobSk.PubKey().Bytes(), Nonce: 0})
+	app.OnInitChain(func(store sdk.RWStore, req abci.RequestInitChain) (resp abci.ResponseInitChain) {
+		SetAccount(store, Account{Pubkey: bobSk.PubKey().Bytes()})
 		return
 	})
 	app.OnValidateTx(VerifyAccount)
-	app.OnTx("fakeroute", func(ctx sdk.Context) sdk.Result {
+	app.OnTx("fakeroute", func(store sdk.RWStore, tx *sdk.Tx) sdk.Result {
 		return sdk.Result{}
 	})
 
@@ -31,6 +31,7 @@ func TestVerifyHandler(t *testing.T) {
 	app.Commit()
 
 	t1 := &sdk.Tx{Route: "fakeroute", Msg: []byte("hello")}
+	t1.Sender = AddressFromPubKey(bobSk.PubKey()).Bytes()
 	t1.Sign(bobSk)
 	t1Bits, err := sdk.EncodeTx(t1)
 	assert.Nil(err)
@@ -41,18 +42,19 @@ func TestVerifyHandler(t *testing.T) {
 
 	// Bad route
 	t1 = &sdk.Tx{Route: "badroute", Msg: []byte("hello")}
+	t1.Sender = AddressFromPubKey(bobSk.PubKey()).Bytes()
 	t1.Sign(bobSk)
 	t1Bits, err = sdk.EncodeTx(t1)
 	assert.Nil(err)
 
 	resp = app.CheckTx(abci.RequestCheckTx{Tx: t1Bits})
-	assert.Equal(uint32(1), resp.Code)
-	assert.Equal("Handler not found", resp.Log)
+	assert.True(resp.Code != 0)
 
 	// Account not found
 	t2 := &sdk.Tx{Route: "fakeroute", Msg: []byte("hello")}
+	t2.Sender = AddressFromPubKey(aliceSk.PubKey()).Bytes()
 	t2.Sign(aliceSk)
-	assert.Equal(aliceSk.PubKey().ToAddress().Bytes(), t2.Sender)
+	assert.Equal(AddressFromPubKey(aliceSk.PubKey()).Bytes(), t2.Sender)
 	t2Bits, err := sdk.EncodeTx(t2)
 	assert.Nil(err)
 
@@ -61,6 +63,7 @@ func TestVerifyHandler(t *testing.T) {
 
 	// Bad signature
 	t1 = &sdk.Tx{Route: "fakeroute", Msg: []byte("hello")}
+	t1.Sender = AddressFromPubKey(bobSk.PubKey()).Bytes()
 	t1.Sign(bobSk)
 	t1.Sig[4] ^= byte(0x01) // Make signature bad
 	t1Bits, err = sdk.EncodeTx(t1)

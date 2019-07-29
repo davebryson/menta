@@ -4,5 +4,4 @@ package accounts;
 // Basic account state store model
 message Account {
   bytes pubkey = 2;
-  uint64 nonce = 3;
 }

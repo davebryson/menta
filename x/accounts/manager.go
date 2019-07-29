@@ -31,9 +31,9 @@ func encodeAccount(acct *Account) ([]byte, error) {
 }
 
 // LoadAccounts can used in initChain to bulk load genesis accounts from a json file
-func LoadAccounts(ctx sdk.Context, accts []Account) error {
+func LoadAccounts(store sdk.RWStore, accts []Account) error {
 	for _, acct := range accts {
-		err := SetAccount(ctx, acct)
+		err := SetAccount(store, acct)
 		if err != nil {
 			return err
 		}
@@ -42,9 +42,9 @@ func LoadAccounts(ctx sdk.Context, accts []Account) error {
 }
 
 // GetAccount from state storage based on the account address
-func GetAccount(ctx sdk.Context, address []byte) (*Account, error) {
+func GetAccount(store sdk.RWStore, address []byte) (*Account, error) {
 	key := getAccountKey(address)
-	acct, err := decodeAccount(ctx.Db.Get(key))
+	acct, err := decodeAccount(store.Get(key))
 	if err != nil {
 		return nil, err
 	}
@@ -58,17 +58,17 @@ func GetAccount(ctx sdk.Context, address []byte) (*Account, error) {
 }
 
 // SetAccount in the state store
-func SetAccount(ctx sdk.Context, acct Account) error {
+func SetAccount(store sdk.RWStore, acct Account) error {
 	pk, err := crypto.PublicKeyFromBytes(acct.Pubkey)
 	if err != nil {
 		return err
 	}
-	address := pk.ToAddress().Bytes()
+	address := AddressFromPubKey(pk).Bytes()
 	encodedAccount, err := encodeAccount(&acct)
 	if err != nil {
 		return err
 	}
-	ctx.Db.Set(getAccountKey(address), encodedAccount)
+	store.Set(getAccountKey(address), encodedAccount)
 
 	return nil
 }

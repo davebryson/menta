@@ -1,4 +1,4 @@
-package logic
+package app
 
 import (
 	"encoding/binary"
@@ -42,18 +42,18 @@ func createApp() *menta.MentaApp {
 	app := menta.NewApp("counter-example", HomeDir)
 
 	// Set the initial state to 0. This is only ran once the first time the app is started
-	app.OnInitialStart(func(ctx sdk.Context, req abci.RequestInitChain) (resp abci.ResponseInitChain) {
-		ctx.Db.Set(stateKey, encodeCount(0))
+	app.OnInitChain(func(store sdk.RWStore, req abci.RequestInitChain) (resp abci.ResponseInitChain) {
+		store.Set(stateKey, encodeCount(0))
 		return
 	})
 
 	// Add the tx validator
-	app.OnValidateTx(func(ctx sdk.Context) sdk.Result {
+	app.OnValidateTx(func(store sdk.RWStore, tx *sdk.Tx) sdk.Result {
 		// Decode the incoming msg in the Tx
-		msgVal := decodeCount(ctx.Tx.Msg)
+		msgVal := decodeCount(tx.Msg)
 
 		// Decode the state
-		stateCount := decodeCount(ctx.Db.Get(stateKey))
+		stateCount := decodeCount(store.Get(stateKey))
 
 		// msg should match the expected next state
 		expected := stateCount + uint32(1)
@@ -62,7 +62,7 @@ func createApp() *menta.MentaApp {
 		}
 
 		// Increment the state so other checks are correct
-		ctx.Db.Set(stateKey, encodeCount(msgVal))
+		store.Set(stateKey, encodeCount(msgVal))
 
 		return sdk.Result{
 			Log: "ok",
@@ -72,17 +72,17 @@ func createApp() *menta.MentaApp {
 	// Add a Tx handler to update state
 	// Sets state to the value of tx.msg.  This is ok as we've already validated the tx
 	// in checkTx
-	app.OnTx(routeName, func(ctx sdk.Context) sdk.Result {
-		ctx.Db.Set(stateKey, ctx.Tx.Msg)
+	app.OnTx(routeName, func(store sdk.RWStore, tx *sdk.Tx) sdk.Result {
+		store.Set(stateKey, tx.Msg)
 		return sdk.Result{
 			Log: "increment",
 		}
 	})
 
 	// Handle queries for the current committed state
-	app.OnQuery(queryRoute, func(key []byte, ctx sdk.QueryContext) (resp abci.ResponseQuery) {
-		resp.Value = ctx.Get(key)
-		return
+	app.OnQuery(queryRoute, func(store sdk.StoreReader, key []byte) ([]byte, error) {
+		value := store.Get(key)
+		return value, nil
 	})
 
 	return app

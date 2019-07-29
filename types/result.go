@@ -27,6 +27,8 @@ type Result struct {
 	//Tags Tags
 }
 
+// *** TODO: Add new Events... ***
+
 // Tag defined in tendermint ... common/types.proto
 type Tag = cmn.KVPair
 

@@ -18,12 +18,9 @@ var (
 )
 
 // VerifyAccount handler is commonly used in checkTx to verify the sender
-// Note: this is a very basic implementation.  It doesn't properly manage a nonce
-func VerifyAccount(ctx sdk.Context) sdk.Result {
-	tx := ctx.Tx
-
+func VerifyAccount(store sdk.RWStore, tx *sdk.Tx) sdk.Result {
 	// 1. Get the senders account
-	acct, err := GetAccount(ctx, tx.Sender)
+	acct, err := GetAccount(store, tx.Sender)
 	if err != nil || acct == nil {
 		return AccountNotFound
 	}
@@ -35,7 +32,7 @@ func VerifyAccount(ctx sdk.Context) sdk.Result {
 	}
 
 	// 3. Verify the account pubkey address matches the sender
-	if !bytes.Equal(pubKey.ToAddress().Bytes(), tx.Sender) {
+	if !bytes.Equal(AddressFromPubKey(pubKey).Bytes(), tx.Sender) {
 		return PubKeyNoMatch
 	}
 

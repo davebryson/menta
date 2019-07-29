@@ -3,10 +3,18 @@
 package app
 
 import (
+	"fmt"
+
 	"github.com/davebryson/menta/store"
 	sdk "github.com/davebryson/menta/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
+)
+
+const (
+	badQueryCode        = 10
+	handlerNotFoundCode = 11
+	txDecodeErrorCode   = 12
 )
 
 var _ abci.Application = (*MentaApp)(nil)
@@ -20,7 +28,7 @@ type MentaApp struct {
 	Config       *cfg.Config
 
 	// initChain
-	onInitialStartHandler sdk.InitialStartHandler
+	onInitChainHandler sdk.InitChainHandler
 	// CheckTx
 	onValidationHandler sdk.TxHandler
 	// BeginBlock
@@ -69,11 +77,11 @@ func NewMockApp() *MentaApp {
 	}
 }
 
-// OnInitialStart : Add this handler if you'd like to do 'something'
+// OnInitChain : Add this handler if you'd like to do 'something'
 // the very first time Menta starts the new app.  Usually this is used
 // to load initial application state: accounts, etc....
-func (app *MentaApp) OnInitialStart(fn sdk.InitialStartHandler) {
-	app.onInitialStartHandler = fn
+func (app *MentaApp) OnInitChain(fn sdk.InitChainHandler) {
+	app.onInitChainHandler = fn
 }
 
 // OnValidateTx : Add this handler to validate your transactions.  This is NOT
@@ -119,10 +127,8 @@ func (app *MentaApp) OnEndBlock(fn sdk.EndBlockHandler) {
 
 // InitChain is ran once on the very first run of the application chain.
 func (app *MentaApp) InitChain(req abci.RequestInitChain) (resp abci.ResponseInitChain) {
-	// TODO: add Validators to state
-	if app.onInitialStartHandler != nil {
-		ctx := sdk.NewContext(app.deliverCache, nil)
-		resp = app.onInitialStartHandler(ctx, req)
+	if app.onInitChainHandler != nil {
+		resp = app.onInitChainHandler(app.deliverCache, req)
 	}
 	return
 }
@@ -143,101 +149,94 @@ func (app *MentaApp) Info(req abci.RequestInfo) abci.ResponseInfo {
 // Query *committed* state in the Tree
 // This calls the handler where the path is the registed query path (handler)
 // and the key is the application specific key in storage
-func (app *MentaApp) Query(query abci.RequestQuery) abci.ResponseQuery {
-	// Get path and key
-	// look up handler by path
-	// send it key and context
+func (app *MentaApp) Query(query abci.RequestQuery) (resp abci.ResponseQuery) {
 	if query.Data == nil || len(query.Data) == 0 {
-		res := abci.ResponseQuery{}
-		res.Code = sdk.BadQuery
-		res.Log = "Error: query requires a key"
-		return res
+		resp.Code = badQueryCode
+		resp.Log = "App Query: query requires a key"
+		return resp
 	}
-	queryKey := query.Data
-	queryPath := query.Path
+	key := query.Data
+	route := query.Path
 
-	handler := app.queryRouter[queryPath]
+	handler := app.queryRouter[route]
 	if handler == nil {
-		res := abci.ResponseQuery{}
-		res.Code = sdk.BadQuery
-		res.Log = "no query handler found"
-		return res
+		resp.Code = badQueryCode
+		resp.Log = fmt.Sprintf("App Query: No query handler found for route %s", route)
+		return resp
 	}
 
-	ctx := sdk.NewQueryContext(app.state)
-	return handler(queryKey, ctx)
+	result, err := handler(app.state, key)
+	if err != nil {
+		resp.Code = badQueryCode
+		resp.Log = err.Error()
+		return resp
+	}
+
+	resp.Code = 0
+	resp.Value = result
+	return resp
+}
+
+func (app *MentaApp) runTx(txbits []byte, isCheck bool) sdk.Result {
+	// Try to decode it
+	tx, err := sdk.DecodeTx(txbits)
+	if err != nil {
+		return sdk.ResultError(txDecodeErrorCode, err.Error())
+	}
+
+	// Check for a valid handler
+	handler := app.router[tx.GetRoute()]
+	if handler == nil {
+		log := fmt.Sprintf("App: handler not found for route %s", tx.GetRoute())
+		return sdk.ResultError(handlerNotFoundCode, log)
+	}
+
+	// If checkTx run that...
+	if isCheck {
+		if app.onValidationHandler == nil {
+			// Nothing to do!
+			return sdk.Result{}
+		}
+		return app.onValidationHandler(app.checkCache, tx)
+	}
+
+	// handle deliverTx
+	handler = app.router[tx.GetRoute()]
+	return handler(app.deliverCache, tx)
 }
 
 // CheckTx populates the mempool. Transactions are ran through the OnValidationHandler.
 // If the pass, they will be considered for inclusion in a block and processed via
 // DeliverTx
-func (app *MentaApp) CheckTx(checkTx abci.RequestCheckTx) abci.ResponseCheckTx {
-	// Decode the tx
-	tx, err := sdk.DecodeTx(checkTx.Tx)
-	if err != nil {
-		e := sdk.ErrorBadTx()
-		return abci.ResponseCheckTx{Code: e.Code, Log: e.Log}
-	}
+func (app *MentaApp) CheckTx(req abci.RequestCheckTx) (resp abci.ResponseCheckTx) {
+	result := app.runTx(req.Tx, true)
+	resp.Code = result.Code
+	resp.Log = result.Log
+	return resp
+}
 
-	// Check there's actually a tx handler for the call. If not, disgard the tx
-	handler := app.router[tx.GetRoute()]
-	if handler == nil {
-		e := sdk.ErrorNoHandler()
-		return abci.ResponseCheckTx{Code: e.Code, Log: e.Log}
-	}
-
-	if app.onValidationHandler == nil {
-		// Nothing to do!
-		return abci.ResponseCheckTx{}
-	}
-
-	ctx := sdk.NewContext(app.checkCache, tx)
-	result := app.onValidationHandler(ctx)
-
-	return abci.ResponseCheckTx{
-		Code: result.Code,
-		Log:  result.Log,
-		Data: result.Data,
-	}
+// DeliverTx is the heart of processing transactions leading to a state transistion.
+// This is where the your application logic lives via handlers
+func (app *MentaApp) DeliverTx(req abci.RequestDeliverTx) (resp abci.ResponseDeliverTx) {
+	result := app.runTx(req.Tx, false)
+	resp.Code = result.Code
+	resp.Log = result.Log
+	return resp
 }
 
 // BeginBlock signals the start of processing a batch of transaction via DeliverTx
 func (app *MentaApp) BeginBlock(req abci.RequestBeginBlock) (resp abci.ResponseBeginBlock) {
 	if app.onBeginBlockHandler != nil {
-		ctx := sdk.NewContext(app.deliverCache, nil)
-		resp = app.onBeginBlockHandler(ctx, req)
+		resp = app.onBeginBlockHandler(app.deliverCache, req)
 	}
 	return
-}
-
-// DeliverTx is the heart of processing transactions leading to a state transistion.
-// This is where the your application logic lives via handlers
-func (app *MentaApp) DeliverTx(dtx abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	tx, err := sdk.DecodeTx(dtx.Tx)
-	if err != nil {
-		e := sdk.ErrorBadTx()
-		return abci.ResponseDeliverTx{Code: e.Code, Log: e.Log}
-	}
-
-	// Handler existence is checked in checkTx
-	handler := app.router[tx.GetRoute()]
-
-	ctx := sdk.NewContext(app.deliverCache, tx)
-	result := handler(ctx)
-
-	return abci.ResponseDeliverTx{
-		Code: result.Code,
-		Log:  result.Log,
-		Data: result.Data,
-	}
 }
 
 // EndBlock signals the end of a block of txs.
 // TODO: return changes to the validator set
 func (app *MentaApp) EndBlock(req abci.RequestEndBlock) (resp abci.ResponseEndBlock) {
 	if app.onEndBlockHandler != nil {
-		ctx := sdk.NewContext(app.deliverCache, nil)
-		resp = app.onEndBlockHandler(ctx, req)
+		resp = app.onEndBlockHandler(app.deliverCache, req)
 	}
 	return
 }
