@@ -1,12 +1,12 @@
 # MENTA
 A *super simple* framework for creating Tendermint (permissioned) blockchain applications. 
 
-But what about [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk) ?  Good question. If you're building a public application or planning to deploy to Cosmos, you should definitely use it. 
+But what about [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk) ?  Good question. If you're building a public facing application or planning to deploy to Cosmos, you should definitely use it. 
 
-Menta is designed primarily for enterprise/permissioned blockchains where there's a need to increase confidence in transactions among parties to the systems.
+Menta is designed primarily for enterprise/permissioned blockchains where there's a need to increase the confidence in transactions among parties to the systems.
 
 This framework is for:
-* Enterprise blockchains that desire Byzantine Fault Tolerance 
+* Enterprise blockchains that desire Byzantine Fault Tolerance. (if it's *not BFT* do you really need a blockchain?)
 * Rapid prototyping and small pilot projects  
 * Folks looking to build Tendermint applications not destined for the Cosmos, or 
 * Folks just wanting to learn *how* a Tendermint ABCI works
@@ -15,12 +15,17 @@ Menta provides a simple/minimal API on top of Tendermint based on our experience
 
 Of course, you can always start here and port to the Cosmos SDK later. That's the magic of Tendermint ABCI!
 
+## State storage
+Menta uses Tendermint's IAVL merkle tree to store application state.  It supports key/values as well
+as lists.
+
 ## Transaction Codec
 Menta uses protobuf for the base transaction model. It's a minimal model leaving it up to the user to decide how to encode/decode application specific messages (msg field). The Tx *wrapper* provides a way to route and transport application specific messages to menta handlers.
 
 ```
  message Tx {
    string route = 1;
+   string msgtype = 2;
    bytes msg = 3;
    bytes sender = 4;
    bytes nonce = 5;
@@ -28,16 +33,17 @@ Menta uses protobuf for the base transaction model. It's a minimal model leaving
  }
 ```
 
-* **route** is use to route transactions to a specific handler. It can also be used to help the application determine how to decode the `msg` payload.
-* **msg** is an encoded application specific message.  How you encode the msg is up to you.
-* **sender** is an optional field to store the wallet address of the sender
+* **route** is use to route transactions to a specific handler
+* **msgtype** can be used to distinquish specific messages
+* **msg** is an encoded application specific message.  How you encode/decode the msg is up to you
+* **sender** is an optional field to store a sender identification, like a wallet address
 * **nonce** is an optional field to store a unique transaction nonce. Often used when signing the transaction
 * **sig** is an optional field to store a cryptographic signature
 
 `tx.go` in `types` provides functionality for signing and verifying transactions.
 
 ## Setup
-**Current supported Tendermint version: v0.31.7**
+**Current supported Tendermint version: v0.32**
 
 Requires Go >= 1.12
 

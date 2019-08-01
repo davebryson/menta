@@ -4,8 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-
-	sdk "github.com/davebryson/menta/types"
 )
 
 var (
@@ -14,154 +12,151 @@ var (
 )
 
 // List provides an array like structure over a key/value store using composite keys.
-// The following structure is used in the underlying store:
+// The following format is used in the realize a list:
 //   /{key}/count => num     (where num is the total number of items in a list for a given key)
 //   /{key}/{index} => value (where index is list index pointing to the value )
+// key:  Is a unique key used across the list
 // Example:
-//   Say our app requires the following: 'Each user has-many public keys'
-//   We can use the List to capture:
+//   Say we want to model that 'Each user has-many public keys'
+//   We can use the List to capture this:
 //   'bob' is our key...maybe an account address. So,
 //   /bob/count => 3 (this means bob has 3 public keys)
 //   /bob/0 => publickey{}
 //   /bob/1 => publickey{}
 //   /bob/2 => publickey{}
-// Everytime a new publickey{} is added for bob, the count is incremented.  We can use the
+// Everytime a new publickey{} is added for bob, the count is incremented and we use the
 // count as an index into the list.
 type List struct {
-	key []byte
+	key   []byte
+	store *KVCache
 }
 
-// NewList creates a new list for the given key.
-// The key should be unique for the values its maintaining a list over
-func NewList(key []byte) List {
+// NewList returns a new or existing list based on the key
+func NewList(st *KVCache, key []byte) List {
 	return List{
-		key: key,
+		key:   key,
+		store: st,
 	}
 }
 
-// Len returns the current number of items in the list
-func (list List) Len(store sdk.StoreReader) uint8 {
-	value := store.Get(list.countKey())
-	return decodeCountValue(value)
+// Len returns the current length
+func (l List) Len() uint64 {
+	value := l.store.Get(l.countKey())
+	return decode(value)
 }
 
-// IsEmpty - true if the list is empty
-func (list List) IsEmpty(store sdk.StoreReader, key []byte) bool {
-	len := list.Len(store)
-	if len == 0 {
-		return true
+// internal
+func (l List) isOutOfBounds(index uint64) bool {
+	return index+1 > l.Len()
+}
+
+// IsEmpty -
+func (l List) IsEmpty() bool {
+	return l.Len() == 0
+}
+
+// Push a new value on to the list
+func (l List) Push(value []byte) {
+	cap := l.Len()
+	l.store.Set(l.indexKey(cap), value)
+	l.store.Set(l.countKey(), encode(cap+1))
+}
+
+// Pop removes and returns a value from the end of the list
+func (l List) Pop() []byte {
+	cap := l.Len()
+	if cap == 0 {
+		return nil
 	}
-	return false
+	index := cap - 1
+	key := l.indexKey(index)
+	value := l.store.Get(key)
+	l.store.Delete(key)
+	l.store.Set(l.countKey(), encode(index))
+	return value
 }
 
-// Checks if a given index is out of bounds
-func (list List) isOutOfBounds(store sdk.StoreReader, index uint8) bool {
-	if index+1 > list.Len(store) {
-		return true
-	}
-	return false
-}
-
-// Get a value for a given key/index. The list uses zero-based index.
-// Will return an error if the index is out of bounds
-func (list List) Get(store sdk.StoreReader, index uint8) ([]byte, error) {
-	if list.isOutOfBounds(store, index) {
-		return nil, ErrOutOfBounds
-	}
-	return store.Get(list.indexKey(index)), nil
-}
-
-// Iterate over the list
-func (list List) Iterate(store sdk.StoreReader, fn func(k []byte, v []byte) bool) bool {
-	len := list.Len(store)
-	startKey := list.indexKey(0)
-	endKey := list.indexKey(len)
-	return store.Iterate(startKey, endKey, true, fn)
-}
-
-// Append a value to the list
-func (list List) Append(store sdk.RWStore, value []byte) {
-	currentIndex := list.Len(store)
-	store.Set(list.indexKey(currentIndex), value)
-	store.Set(list.countKey(), encodeCountValue(currentIndex+1))
-}
-
-// Insert a value at a given index. This obviously will over-write the
-// current value. It will return the previous value or an error if out of bounds
-func (list List) Insert(store sdk.RWStore, index uint8, value []byte) ([]byte, error) {
-	lastvalue, err := list.Get(store, index)
-	if err != nil {
-		return nil, err
-	}
-	store.Set(list.indexKey(index), value)
-	return lastvalue, nil
-}
-
-// Pop (remove) an item at a given index.  This will delete the value,
-// update all indices, and update the total count. Note, this can lead
-// to 'write amplification' as 1 delete may translate to N+1 writes in
-// order to update the list index.
-func (list List) Pop(store sdk.RWStore, index uint8) error {
-	if list.isOutOfBounds(store, index) {
+// Set (overwrite) a value at a given index.  This will return an
+// error if the index is out of bounds
+func (l List) Set(index uint64, value []byte) error {
+	if l.isOutOfBounds(index) {
 		return ErrOutOfBounds
 	}
-	currentLen := list.Len(store)
-
-	// Case 1: only 1 item in the list
-	if currentLen == 1 {
-		// Only delete the item at index 0
-		store.Delete(list.indexKey(index))
-		store.Set(list.countKey(), encodeCountValue(0))
-		return nil
-	}
-
-	// Case 2: Delete the last item in the list
-	if index == currentLen-1 {
-		store.Delete(list.indexKey(index))
-		store.Set(list.countKey(), encodeCountValue(currentLen-1))
-		return nil
-	}
-
-	// Case 3: all others...
-	newLength := currentLen - 1
-	// Remove the item of interest
-	store.Delete(list.indexKey(index))
-
-	// Start from current index and rewrite the others
-	for i := int(index); i < int(newLength); i++ {
-		val, e := list.Get(store, uint8(i+1))
-		if e != nil {
-			return e
-		}
-		store.Set(list.indexKey(uint8(i)), val)
-	}
-
-	// Update the count
-	store.Set(list.countKey(), encodeCountValue(newLength))
+	l.store.Set(l.indexKey(index), value)
 	return nil
 }
 
-// Key used to store the count for the list
-func (list List) countKey() []byte {
-	ck := fmt.Sprintf("/%s/count", list.key)
-	return []byte(ck)
+// Extend the list for the given values, increasing the len
+// Ex:  If list A = [1,2] - A.extend([3,4,5]) => [1,2,3,4,5]
+func (l List) Extend(values [][]byte) {
+	for _, v := range values {
+		l.Push(v)
+	}
 }
 
-// Composite key for values
-func (list List) indexKey(index uint8) []byte {
-	ik := fmt.Sprintf("/%s/%04d", list.key, index)
-	return []byte(ik)
+// Truncate - 'chop' off the end of the list at a given index
+// Ex:  If list A =  [1,2,3,4,5]  A.Truncate(2) => [1,2]
+func (l List) Truncate(index uint64) error {
+	if l.isOutOfBounds(index) {
+		return ErrOutOfBounds
+	}
+	totalLength := l.Len()
+	count := totalLength
+	for i := index; i < totalLength; i++ {
+		l.store.Delete(l.indexKey(i))
+		count--
+		l.store.Set(l.countKey(), encode(count))
+	}
+	return nil
 }
 
-// Serde for count value
-func decodeCountValue(v []byte) uint8 {
-	if len(v) == 0 {
+// Clear the list removing all values
+func (l List) Clear() error {
+	return l.Truncate(0)
+}
+
+// Get a value at a given index. Will return an error
+// if the given index is out of bounds.
+func (l List) Get(index uint64) ([]byte, error) {
+	if l.isOutOfBounds(index) {
+		return nil, ErrOutOfBounds
+	}
+	return l.store.Get(l.indexKey(index)), nil
+}
+
+// Iterate over entries in the *committed* list. The callback function will be passed
+// each visited index and value. NOTE: The iterator will not return un-committed entries
+// in the current cache
+func (l List) Iterate(fn func(index uint64, value []byte) bool) bool {
+	end := l.Len()
+	index := -1
+	return l.store.Iterate(l.indexKey(0), l.indexKey(end), true, func(_k, v []byte) bool {
+		index++
+		return fn(uint64(index), v)
+	})
+}
+
+// internal - count key format
+func (l List) countKey() []byte {
+	return []byte(fmt.Sprintf("/%x/0x01", l.key))
+}
+
+// internal - Composite key format for values
+func (l List) indexKey(index uint64) []byte {
+	return []byte(fmt.Sprintf("/%x/%020d", l.key, index))
+}
+
+// internal - encode the count value as a []byte
+func encode(count uint64) []byte {
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, count)
+	return b
+}
+
+// internal - decode a []byte count to a uint64
+func decode(raw []byte) uint64 {
+	if raw == nil || len(raw) == 0 {
 		return 0
 	}
-	return uint8(binary.LittleEndian.Uint16(v))
-}
-func encodeCountValue(v uint8) []byte {
-	b := make([]byte, 2)
-	binary.LittleEndian.PutUint16(b, uint16(v))
-	return b
+	return binary.LittleEndian.Uint64(raw)
 }
