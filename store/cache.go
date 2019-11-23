@@ -54,7 +54,8 @@ func (cache *KVCache) Delete(key []byte) {
 }
 
 // Get a value for a given key.  Tries the cache first and then the state store
-func (cache *KVCache) Get(key []byte) []byte {
+// TODO: Should return ([]byte, error) ???
+func (cache *KVCache) Get(key []byte) ([]byte, error) {
 	cache.mtx.Lock()
 	defer cache.mtx.Unlock()
 
@@ -63,21 +64,21 @@ func (cache *KVCache) Get(key []byte) []byte {
 	// check the cache
 	data := cache.storage[cacheKey]
 	if !data.delete && data.value != nil {
-		return data.value
+		return data.value, nil
 	}
 
 	if data.value != nil && data.delete {
-		return nil
+		return nil, NotFound
 	}
 
 	// Not in the cache, go to cold storage
-	value := cache.statedb.Get(key)
-	if value != nil {
-		cache.storage[cacheKey] = dataCacheObj{value, false, false}
-		return value
+	value, err := cache.statedb.Get(key)
+	if err != nil {
+		return nil, NotFound
 	}
 
-	return nil
+	cache.storage[cacheKey] = dataCacheObj{value, false, false}
+	return value, nil
 }
 
 // Iterate and produce results that are processed via the callback func

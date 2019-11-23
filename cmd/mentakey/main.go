@@ -15,7 +15,6 @@ type key struct {
 	Type       string
 	Privatekey string
 	Publickey  string
-	Address    string
 }
 
 func makeKeys(num int) []byte {

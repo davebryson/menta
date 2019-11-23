@@ -2,7 +2,7 @@ package types
 
 type StoreReader interface {
 	// Get from the cache or tree
-	Get(key []byte) []byte
+	Get(key []byte) ([]byte, error)
 	// Iterateover the tree/db
 	Iterate(start, end []byte, ascending bool, fn func(key []byte, value []byte) bool) bool
 }

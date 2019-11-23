@@ -1,6 +1,8 @@
 package store
 
 import (
+	"errors"
+
 	sdk "github.com/davebryson/menta/types"
 	proto "github.com/golang/protobuf/proto"
 
@@ -14,7 +16,10 @@ const (
 	history     = int64(5)
 )
 
-var commitKey = []byte("/menta/commitinfo")
+var (
+	commitKey = []byte("00/menta/commitinfo00")
+	NotFound  = errors.New("Get: value not found for given key")
+)
 
 var _ sdk.Store = (*StateStore)(nil)
 
@@ -52,10 +57,14 @@ func (st *StateStore) Iterate(start, end []byte, ascending bool, fn func(key []b
 	return st.tree.IterateRange(start, end, ascending, fn)
 }
 
-func (st *StateStore) Get(key []byte) []byte {
+// TODO: This should return ([]byte, error): error if value is nil
+func (st *StateStore) Get(key []byte) ([]byte, error) {
 	// This should call get...?
 	_, bits := st.tree.Get(key)
-	return bits
+	if bits == nil {
+		return nil, NotFound
+	}
+	return bits, nil
 }
 
 // NOT IN CURRENT USE - add back later.

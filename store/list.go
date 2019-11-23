@@ -41,7 +41,10 @@ func NewList(st *KVCache, key []byte) List {
 
 // Len returns the current length
 func (l List) Len() uint64 {
-	value := l.store.Get(l.countKey())
+	value, err := l.store.Get(l.countKey())
+	if err != nil {
+		return 0
+	}
 	return decode(value)
 }
 
@@ -70,7 +73,11 @@ func (l List) Pop() []byte {
 	}
 	index := cap - 1
 	key := l.indexKey(index)
-	value := l.store.Get(key)
+	value, err := l.store.Get(key)
+	if err != nil {
+		return nil
+	}
+
 	l.store.Delete(key)
 	l.store.Set(l.countKey(), encode(index))
 	return value
@@ -87,7 +94,7 @@ func (l List) Set(index uint64, value []byte) error {
 }
 
 // Extend the list for the given values, increasing the len
-// Ex:  If list A = [1,2] - A.extend([3,4,5]) => [1,2,3,4,5]
+// Ex:  if list A = [1,2] then A.extend([3,4,5]) => [1,2,3,4,5]
 func (l List) Extend(values [][]byte) {
 	for _, v := range values {
 		l.Push(v)
@@ -95,7 +102,7 @@ func (l List) Extend(values [][]byte) {
 }
 
 // Truncate - 'chop' off the end of the list at a given index
-// Ex:  If list A =  [1,2,3,4,5]  A.Truncate(2) => [1,2]
+// Ex:  if list A =  [1,2,3,4,5] then A.Truncate(2) => [1,2]
 func (l List) Truncate(index uint64) error {
 	if l.isOutOfBounds(index) {
 		return ErrOutOfBounds
@@ -121,7 +128,7 @@ func (l List) Get(index uint64) ([]byte, error) {
 	if l.isOutOfBounds(index) {
 		return nil, ErrOutOfBounds
 	}
-	return l.store.Get(l.indexKey(index)), nil
+	return l.store.Get(l.indexKey(index))
 }
 
 // Iterate over entries in the *committed* list. The callback function will be passed

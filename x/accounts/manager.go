@@ -44,7 +44,12 @@ func LoadAccounts(store sdk.RWStore, accts []Account) error {
 // GetAccount from state storage based on the account address
 func GetAccount(store sdk.RWStore, address []byte) (*Account, error) {
 	key := getAccountKey(address)
-	acct, err := decodeAccount(store.Get(key))
+	v, err := store.Get(key)
+	if err != nil {
+		return nil, err
+	}
+
+	acct, err := decodeAccount(v)
 	if err != nil {
 		return nil, err
 	}

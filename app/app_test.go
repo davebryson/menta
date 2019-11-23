@@ -44,8 +44,11 @@ func createApp() *MentaApp {
 		// Decode the incoming msg in the Tx
 		msgVal := decodeCount(tx.Msg)
 		// Decode the state
-		stateCount := decodeCount(store.Get(stateKey))
-
+		v, err := store.Get(stateKey)
+		if err != nil {
+			return sdk.ResultError(2, err.Error())
+		}
+		stateCount := decodeCount(v)
 		// msg should match the expected next state
 		expected := stateCount + uint32(1)
 		if msgVal != expected {
@@ -77,9 +80,9 @@ func createApp() *MentaApp {
 	})
 
 	app.OnQuery("/key", func(store sdk.StoreReader, key []byte) ([]byte, error) {
-		resp := store.Get(key)
-		return resp, nil
+		return store.Get(key)
 	})
+
 	// Add an EndBlock handler
 	app.OnEndBlock(func(store sdk.RWStore, req abci.RequestEndBlock) abci.ResponseEndBlock {
 		return abci.ResponseEndBlock{

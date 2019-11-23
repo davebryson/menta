@@ -52,8 +52,13 @@ func createApp() *menta.MentaApp {
 		// Decode the incoming msg in the Tx
 		msgVal := decodeCount(tx.Msg)
 
+		v, err := store.Get(stateKey)
+		if err != nil {
+			return sdk.ResultError(2, err.Error())
+		}
+
 		// Decode the state
-		stateCount := decodeCount(store.Get(stateKey))
+		stateCount := decodeCount(v)
 
 		// msg should match the expected next state
 		expected := stateCount + uint32(1)
@@ -81,8 +86,7 @@ func createApp() *menta.MentaApp {
 
 	// Handle queries for the current committed state
 	app.OnQuery(queryRoute, func(store sdk.StoreReader, key []byte) ([]byte, error) {
-		value := store.Get(key)
-		return value, nil
+		return store.Get(key)
 	})
 
 	return app

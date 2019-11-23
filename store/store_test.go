@@ -19,7 +19,10 @@ func TestStoreBasics(t *testing.T) {
 	dcache := NewCache(st)
 	// Setter/getter
 	dcache.Set([]byte("name"), []byte("dave"))
-	assert.Equal([]byte("dave"), dcache.Get([]byte("name")))
+
+	v, err := dcache.Get([]byte("name"))
+	assert.Nil(err)
+	assert.Equal([]byte("dave"), v)
 	assert.Nil(dcache.Get([]byte("not")))
 
 	// abci.Commit()
@@ -31,14 +34,19 @@ func TestStoreBasics(t *testing.T) {
 	// Check the store from the previous commit
 	st = NewStateStore(".")
 	dcache = NewCache(st)
-	assert.Equal([]byte("dave"), dcache.Get([]byte("name")))
+	v, err = dcache.Get([]byte("name"))
+	assert.Equal([]byte("dave"), v)
 	assert.Equal(info.Version, st.CommitInfo.Version)
 	assert.Equal(info.Hash, st.CommitInfo.Hash)
 
 	dcache.Delete([]byte("name"))
 	//dcache.ApplyToState()
 
-	assert.Equal([]byte(nil), dcache.Get([]byte("name")))
+	_, err = dcache.Get([]byte("name"))
+	assert.NotNil(err)
+
+	_, err = dcache.Get([]byte("nope"))
+	assert.EqualError(err, "Get: value not found for given key")
 
 	st.Close()
 }
@@ -53,7 +61,8 @@ func TestStoreQueries(t *testing.T) {
 	dcache.ApplyToState()
 	st.Commit()
 
-	rq1value := st.Get([]byte("name1"))
+	rq1value, err := st.Get([]byte("name1"))
+	assert.Nil(err)
 	assert.Equal([]byte("dave"), rq1value)
 
 	//root := commit.Hash
