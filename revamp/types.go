@@ -14,6 +14,7 @@ type Message interface {
 	Execute(sender []byte, store sdk.KVStore) sdk.Result
 }
 
+// Msg should be []byte
 type SignedTransaction struct {
 	Route     string
 	Sender    []byte
@@ -22,6 +23,7 @@ type SignedTransaction struct {
 	Signature []byte
 }
 
+// Add DecodeMessage([]byte) Message
 type Service interface {
 	Route() string
 	RegisterMessages(cdc *amino.Codec)
@@ -35,7 +37,7 @@ func RegisterMentaTypes(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&SignedTransaction{}, "menta/signedtx", nil)
 }
 
-// Temp sim engine...
+// Temp sim engine... //
 type SimApp struct {
 	codec    *amino.Codec
 	services map[string]Service

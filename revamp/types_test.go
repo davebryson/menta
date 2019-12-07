@@ -21,6 +21,8 @@ func (cm CreateMsg) Execute(sender []byte, store sdk.KVStore) sdk.Result {
 	}
 }
 
+// This approach (compared to a handler) allows each service to also
+// have some transient state.
 type MyService struct{}
 
 func (ms *MyService) Route() string {
