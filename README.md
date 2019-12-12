@@ -20,16 +20,18 @@ Menta uses protobuf for the base transaction model. It's a minimal model leaving
 
 ```
  message Tx {
-   string route = 1;
-   bytes msg = 3;
+   string service = 1;
+   bytes msg = 2;
+   uint32 msgid = 3
    bytes sender = 4;
    bytes nonce = 5;
    bytes sig = 6;
  }
 ```
 
-* **route** is use to route transactions to a specific handler. It can also be used to help the application determine how to decode the `msg` payload.
+* **service** is use to route transactions to a specific `Service`.
 * **msg** is an encoded application specific message.  How you encode the msg is up to you.
+* **msgid** can be used to distinquish messages for decoding
 * **sender** is an optional field to store the wallet address of the sender
 * **nonce** is an optional field to store a unique transaction nonce. Often used when signing the transaction
 * **sig** is an optional field to store a cryptographic signature
@@ -37,7 +39,7 @@ Menta uses protobuf for the base transaction model. It's a minimal model leaving
 `tx.go` in `types` provides functionality for signing and verifying transactions.
 
 ## Setup
-**Current supported Tendermint version: v0.31.7**
+**Current supported Tendermint version: v0.32.0**
 
 Requires Go >= 1.12
 
