@@ -7,8 +7,8 @@ import (
 )
 
 // DecodeTx returns a Tx from a []byte
-func DecodeTx(raw []byte) (*Tx, error) {
-	var tx Tx
+func DecodeTx(raw []byte) (*SignedTransaction, error) {
+	var tx SignedTransaction
 	err := proto.Unmarshal(raw, &tx)
 	if err != nil {
 		return nil, err
@@ -17,17 +17,18 @@ func DecodeTx(raw []byte) (*Tx, error) {
 }
 
 // EncodeTx returns a []byte or error
-func EncodeTx(tx *Tx) ([]byte, error) {
+func EncodeTx(tx *SignedTransaction) ([]byte, error) {
 	return proto.Marshal(tx)
 }
 
 // Hash the tx for signing
-func (tx *Tx) hashMsg() ([]byte, error) {
-	bits, err := proto.Marshal(&Tx{
-		Sender: tx.Sender,
-		Route:  tx.Route,
-		Msg:    tx.Msg,
-		Nonce:  tx.Nonce,
+func (tx *SignedTransaction) hashMsg() ([]byte, error) {
+	bits, err := proto.Marshal(&SignedTransaction{
+		Sender:  tx.Sender,
+		Service: tx.Service,
+		Msg:     tx.Msg,
+		Msgid:   tx.Msgid,
+		Nonce:   tx.Nonce,
 	})
 	if err != nil {
 		return nil, err
@@ -37,8 +38,7 @@ func (tx *Tx) hashMsg() ([]byte, error) {
 }
 
 // Sign a transaction
-func (tx *Tx) Sign(sk crypto.PrivateKeyEd25519) error {
-	tx.Sender = sk.PubKey().ToAddress().Bytes()
+func (tx *SignedTransaction) Sign(sk crypto.PrivateKeyEd25519) error {
 	msgHash, err := tx.hashMsg()
 	if err != nil {
 		return err
@@ -48,7 +48,7 @@ func (tx *Tx) Sign(sk crypto.PrivateKeyEd25519) error {
 }
 
 // Verify a Tx against a given public key
-func (tx *Tx) Verify(pubKey crypto.PublicKeyEd25519) bool {
+func (tx *SignedTransaction) Verify(pubKey crypto.PublicKeyEd25519) bool {
 	msg, err := tx.hashMsg()
 	if err != nil {
 		return false

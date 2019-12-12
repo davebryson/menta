@@ -10,10 +10,11 @@ import (
 )
 
 var (
-	stateKey = []byte("countkey")
+	stateKey    = []byte("countkey")
+	serviceName = "counter_test"
 )
 
-const routeName = "counter_test"
+var _ sdk.Service = (*CounterService)(nil)
 
 func encodeCount(val uint32) []byte {
 	buf := make([]byte, 4)
@@ -27,74 +28,69 @@ func decodeCount(bits []byte) uint32 {
 
 func makeTx(val uint32) ([]byte, error) {
 	encoded := encodeCount(val)
-	t := &sdk.Tx{Route: routeName, Msg: encoded}
+	t := &sdk.SignedTransaction{Service: serviceName, Msg: encoded}
 	return sdk.EncodeTx(t)
+}
+
+// Service implementation
+
+type CounterService struct{}
+
+func (srv CounterService) Route() string { return serviceName }
+func (srv CounterService) Init(ctx sdk.TxContext) {
+	ctx.Insert(stateKey, encodeCount(0))
+}
+func (srv CounterService) Execute(ctx sdk.TxContext) sdk.Result {
+	ctx.Insert(stateKey, ctx.Tx.Msg)
+	return sdk.Result{
+		Log: "ok",
+	}
+}
+func (srv CounterService) Query(key []byte, ctx sdk.QueryContext) sdk.Result {
+	val, err := ctx.Get(key)
+	if err != nil {
+		return sdk.ResultError(1, err.Error())
+	}
+	return sdk.Result{
+		Code: 0,
+		Data: val,
+	}
+}
+
+func ValidateTx(ctx sdk.TxContext) sdk.Result {
+	// Decode the incoming msg in the Tx
+	msgVal := decodeCount(ctx.Tx.Msg)
+	// Decode the state
+	val, err := ctx.Get(stateKey)
+	if err != nil {
+		return sdk.ResultError(2, "expected count")
+	}
+	stateCount := decodeCount(val)
+
+	// msg should match the expected next state
+	expected := stateCount + uint32(1)
+	if msgVal != expected {
+		return sdk.ResultError(2, "bad count")
+	}
+
+	// Increment the state for other checks
+	ctx.Insert(stateKey, encodeCount(msgVal))
+
+	return sdk.Result{
+		Log: "ok",
+	}
 }
 
 func createApp() *MentaApp {
 	app := NewMockApp() // inmemory tree
-
-	// Set up initial chain state
-	app.OnInitialStart(func(ctx sdk.Context, req abci.RequestInitChain) (resp abci.ResponseInitChain) {
-		ctx.Db.Set(stateKey, encodeCount(0))
-		return
-	})
-	// Add the tx validator
-	app.OnValidateTx(func(ctx sdk.Context) sdk.Result {
-		// Decode the incoming msg in the Tx
-		msgVal := decodeCount(ctx.Tx.Msg)
-		// Decode the state
-		stateCount := decodeCount(ctx.Db.Get(stateKey))
-
-		// msg should match the expected next state
-		expected := stateCount + uint32(1)
-		if msgVal != expected {
-			return sdk.ResultError(2, "bad count")
-		}
-
-		// Increment the state for other checks
-		ctx.Db.Set(stateKey, encodeCount(msgVal))
-
-		return sdk.Result{
-			Log: "ok",
-		}
-	})
-	// Add a BeginBlock handler
-	app.OnBeginBlock(func(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
-		return abci.ResponseBeginBlock{
-			//Tags: sdk.Tags{
-			//	sdk.Tag{Key: []byte("begin"), Value: []byte("av")},
-			//},
-		}
-	})
-	// Add a Tx processor with 'counter_test' route
-	// Increments the count from the msg and updates state
-	app.OnTx(routeName, func(ctx sdk.Context) sdk.Result {
-		ctx.Db.Set(stateKey, ctx.Tx.Msg)
-		return sdk.Result{
-			Log: "increment",
-		}
-	})
-
-	app.OnQuery("/key", func(key []byte, ctx sdk.QueryContext) (resp abci.ResponseQuery) {
-		resp.Value = ctx.Get(key)
-		return
-	})
-	// Add an EndBlock handler
-	app.OnEndBlock(func(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
-		return abci.ResponseEndBlock{
-			//Tags: sdk.Tags{
-			//	sdk.Tag{Key: []byte("end"), Value: []byte("av")},
-			//},
-		}
-	})
+	app.ValidateTxHandler(ValidateTx)
+	app.AddService(CounterService{})
 	return app
 }
 
 // Test to check all callbacks and handler hooks
 func TestAppCallbacks(t *testing.T) {
 	assert := assert.New(t)
-
 	app := createApp()
 
 	// --- Simulate running it ---
@@ -115,55 +111,50 @@ func TestAppCallbacks(t *testing.T) {
 	// Should == the first commit hash
 	assert.Equal(c1.Data, hash1)
 
-	// Call Query & Check the state
-	respQ := app.Query(abci.RequestQuery{Path: "/key", Data: stateKey})
+	// Call Query & check the initial state
+	respQ := app.Query(abci.RequestQuery{Path: serviceName, Data: stateKey})
 	assert.Equal(uint32(0), respQ.Code)
 	assert.Equal(uint32(0), decodeCount(respQ.GetValue()))
 
-	// Run validate
+	// Run check
 	// Ok
 	tx, err := makeTx(1)
 	assert.Nil(err)
 	chtx := app.CheckTx(abci.RequestCheckTx{Tx: tx})
 	assert.Equal(abci.ResponseCheckTx{Log: "ok", Code: 0}, chtx)
 
-	// Bad
+	// Run check
+	// Bad count - should be 2
 	badtx, _ := makeTx(4)
 	chtx = app.CheckTx(abci.RequestCheckTx{Tx: badtx})
 	assert.Equal(abci.ResponseCheckTx{Log: "bad count", Code: 2}, chtx)
 
-	// Ok
+	// Run check
+	// Should be good
 	tx1, err := makeTx(2)
 	chtx = app.CheckTx(abci.RequestCheckTx{Tx: tx1})
 	assert.Equal(abci.ResponseCheckTx{Log: "ok", Code: 0}, chtx)
 
-	// No committed state yet. So it should still be 0
-	respQ = app.Query(abci.RequestQuery{Path: "/key", Data: stateKey})
+	// Check cache should return 0 as it only reads committed state
+	respQ = app.Query(abci.RequestQuery{Path: serviceName, Data: stateKey})
 	assert.Equal(uint32(0), respQ.Code)
 	assert.Equal(uint32(0), decodeCount(respQ.GetValue()))
 
-	// --- Process a block
-	//bb := app.BeginBlock(abci.RequestBeginBlock{})
-	//assert.Equal(1, len(bb.Tags))
-	//assert.Equal([]byte("begin"), bb.Tags[0].Key)
-
-	// Run Tx handlers
+	// Run Deliver handlers
 	dtx := app.DeliverTx(abci.RequestDeliverTx{Tx: tx})
-	assert.Equal(abci.ResponseDeliverTx{Log: "increment", Code: 0}, dtx)
-	dtx = app.DeliverTx(abci.RequestDeliverTx{Tx: tx1})
-	assert.Equal(abci.ResponseDeliverTx{Log: "increment", Code: 0}, dtx)
+	assert.Equal(abci.ResponseDeliverTx{Log: "ok", Code: 0}, dtx)
 
-	//eb := app.EndBlock(abci.RequestEndBlock{})
-	//assert.Equal(1, len(eb.Tags))
-	//assert.Equal([]byte("end"), eb.Tags[0].Key)
+	dtx = app.DeliverTx(abci.RequestDeliverTx{Tx: tx1})
+	assert.Equal(abci.ResponseDeliverTx{Log: "ok", Code: 0}, dtx)
 
 	// Commit the new state to storage
 	commit := app.Commit()
+
 	assert.NotNil(commit.Data)
 	// Should be a new apphash
 	assert.NotEqual(c1.Data, commit.Data)
 
 	// Now committed state should == 2
-	respQ = app.Query(abci.RequestQuery{Path: "/key", Data: stateKey})
+	respQ = app.Query(abci.RequestQuery{Path: serviceName, Data: stateKey})
 	assert.Equal(uint32(2), decodeCount(respQ.GetValue()))
 }

@@ -5,10 +5,11 @@ package types;
 //
 // 'msg' is a []byte of application specific content,
 // the application is reponsible for encoding/decoding it.
-message Tx {
-  string route = 1;
-  bytes msg = 3;
-  bytes sender = 4;
+message SignedTransaction {
+  string service = 1;
+  bytes sender = 2;
+  uint32 msgid = 3;
+  bytes msg = 4;
   bytes nonce = 5;
   bytes sig = 6;
 }

@@ -4,16 +4,17 @@ package store
 import (
 	"sort"
 
-	"github.com/davebryson/menta/types"
+	sdk "github.com/davebryson/menta/types"
 )
 
 // Implements KVCache
-var _ types.Cache = (*KVCache)(nil)
+var _ sdk.Cache = (*KVCache)(nil)
 
 // Used to track whether a k/v pair has been updated.
 type dataCacheObj struct {
-	value []byte
-	dirty bool
+	value  []byte
+	dirty  bool
+	delete bool
 }
 
 // KVCache used by the app. It wraps a simple cache and access to the State Store
@@ -32,27 +33,49 @@ func NewCache(store *StateStore) *KVCache {
 
 // Set a key in the cache
 func (cache *KVCache) Set(key, val []byte) {
-	cache.storage[string(key)] = dataCacheObj{val, true}
+	cache.storage[string(key)] = dataCacheObj{val, true, false}
+}
+
+// Remove a key/value
+func (cache *KVCache) Delete(key []byte) {
+	if cache.Exists(key) {
+		cache.storage[string(key)] = dataCacheObj{nil, false, true}
+	}
+}
+
+// Exists - checks for a given key
+func (cache *KVCache) Exists(key []byte) bool {
+	_, err := cache.Get(key)
+	if err == nil {
+		return true
+	}
+	return false
+}
+
+// GetCommitted only returns committed data, nothing cached
+func (cache *KVCache) GetCommitted(key []byte) ([]byte, error) {
+	return cache.statedb.Get(key)
 }
 
 // Get a value for a given key.  Try the cache first and then the state db
-func (cache *KVCache) Get(key []byte) []byte {
+func (cache *KVCache) Get(key []byte) ([]byte, error) {
 	cacheKey := string(key)
 
 	// check the cache
-	data := cache.storage[cacheKey]
-	if data.value != nil {
-		return data.value
+	data, ok := cache.storage[cacheKey]
+	if ok && !data.delete {
+		return data.value, nil
 	}
 
 	// Not in the cache, go to cold storage
-	value := cache.statedb.Get(key)
-	if value != nil {
-		cache.storage[cacheKey] = dataCacheObj{value, false}
-		return value
+	value, err := cache.statedb.Get(key)
+	if err == nil {
+		// cache it as not-dirty
+		cache.storage[cacheKey] = dataCacheObj{value, false, false}
+		return value, nil
 	}
 
-	return nil
+	return nil, ValueNotFound
 }
 
 // IterateKeyRange returns results that are processed via the callback func
@@ -64,18 +87,26 @@ func (cache *KVCache) IterateKeyRange(start, end []byte, ascending bool, fn func
 // for determinism, then writes the set to the tree
 func (cache *KVCache) ApplyToState() {
 	storageKeys := make([]string, 0, len(cache.storage))
-	for k := range cache.storage {
-		storageKeys = append(storageKeys, k)
+
+	for key := range cache.storage {
+		storageKeys = append(storageKeys, key)
 	}
 
+	// Sort keys for determinism (required by IAVL)
 	sort.Strings(storageKeys)
 
-	for _, k := range storageKeys {
-		data := cache.storage[k]
-		// We don't (re)set unchanged data
-		if data.value == nil || !data.dirty {
+	for _, key := range storageKeys {
+		data := cache.storage[key]
+
+		// do delete and continue
+		if data.delete {
+			cache.statedb.Delete([]byte(key))
 			continue
 		}
-		cache.statedb.Set([]byte(k), data.value)
+
+		// Only insert dirty data. We don't re-insert unchanged, cached data
+		if data.dirty {
+			cache.statedb.Set([]byte(key), data.value)
+		}
 	}
 }

@@ -3,9 +3,13 @@ package types
 // KVStore is the base interface for all methods related to a store. See the store package
 type KVStore interface {
 	// Get from the cache or tree
-	Get(key []byte) []byte
+	Get(key []byte) ([]byte, error)
+	// Get only from committed data
+	GetCommitted(key []byte) ([]byte, error)
 	// Set to the cache or tree
 	Set(key, value []byte)
+	// Delete a key/value pair
+	Delete(key []byte)
 	// IterateKeyRange over the tree
 	IterateKeyRange(start, end []byte, ascending bool, fn func(key []byte, value []byte) bool) bool
 }

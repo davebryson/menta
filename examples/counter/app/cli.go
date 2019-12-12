@@ -1,4 +1,4 @@
-package logic
+package app
 
 import (
 	"encoding/json"
@@ -12,7 +12,7 @@ const rpcAddr = "tcp://localhost:26657"
 
 func makeTx(val uint32) ([]byte, error) {
 	encoded := encodeCount(val)
-	t := &sdk.Tx{Route: routeName, Msg: encoded}
+	t := &sdk.SignedTransaction{Service: serviceName, Msg: encoded}
 	return sdk.EncodeTx(t)
 }
 
@@ -42,7 +42,7 @@ func SendTx(val uint32) {
 // CheckState queries the node for the latest confirmed state of the count
 func CheckState() {
 	client := rpcclient.NewHTTP(rpcAddr, "/websocket")
-	result, err := client.ABCIQuery(queryRoute, stateKey)
+	result, err := client.ABCIQuery(serviceName, stateKey)
 	if err != nil {
 		fmt.Println(err.Error())
 		return

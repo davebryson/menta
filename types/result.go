@@ -24,7 +24,6 @@ type Result struct {
 	Code uint32 // Any non-zero code is an error
 	Data []byte
 	Log  string
-	//Tags Tags
 }
 
 // Tag defined in tendermint ... common/types.proto

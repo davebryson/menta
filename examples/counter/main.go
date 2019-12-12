@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/davebryson/menta/examples/counter/logic"
+	counter "github.com/davebryson/menta/examples/counter/app"
 	"github.com/urfave/cli"
 )
 
@@ -24,7 +24,7 @@ func main() {
 			Name:  "start",
 			Usage: "Start the tendermint node",
 			Action: func(c *cli.Context) error {
-				logic.RunApp()
+				counter.RunApp()
 				return nil
 			},
 		},
@@ -38,7 +38,7 @@ func main() {
 					fmt.Printf("Error: '%v' is not a valid number\n", val)
 					return nil
 				}
-				logic.SendTx(uint32(i))
+				counter.SendTx(uint32(i))
 				return nil
 			},
 		},
@@ -46,7 +46,7 @@ func main() {
 			Name:  "state",
 			Usage: "Check state",
 			Action: func(c *cli.Context) error {
-				logic.CheckState()
+				counter.CheckState()
 				return nil
 			},
 		},
