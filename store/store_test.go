@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	abci "github.com/tendermint/tendermint/abci/types"
 )
 
 // Tests Store and Cache
@@ -20,7 +19,9 @@ func TestStoreBasics(t *testing.T) {
 	dcache := NewCache(st)
 	// Setter/getter
 	dcache.Set([]byte("name"), []byte("dave"))
-	assert.Equal([]byte("dave"), dcache.Get([]byte("name")))
+	val, err := dcache.Get([]byte("name"))
+	assert.Nil(err)
+	assert.Equal([]byte("dave"), val)
 	assert.Nil(dcache.Get([]byte("not")))
 
 	// abci.Commit()
@@ -32,36 +33,29 @@ func TestStoreBasics(t *testing.T) {
 	// Check the store from the previous commit
 	st = NewStateStore(".")
 	dcache = NewCache(st)
-	assert.Equal([]byte("dave"), dcache.Get([]byte("name")))
+	val, err = dcache.Get([]byte("name"))
+	assert.Nil(err)
+	assert.Equal([]byte("dave"), val)
 	assert.Equal(info.Version, st.CommitInfo.Version)
 	assert.Equal(info.Hash, st.CommitInfo.Hash)
 
-	st.Close()
-}
+	for _, val := range [][]byte{[]byte("a"), []byte("b"), []byte("c"), []byte("d"), []byte("e")} {
+		dcache.Set(val, val)
+	}
 
-func TestStoreQueries(t *testing.T) {
-	assert := assert.New(t)
+	val, err = dcache.Get([]byte("c"))
+	assert.Nil(err)
+	assert.Equal([]byte("c"), val)
 
-	st := NewStateStore("") // in-memory
-	dcache := NewCache(st)
-	dcache.Set([]byte("name1"), []byte("dave"))
-	dcache.Set([]byte("name2"), []byte("bob"))
+	dcache.Delete([]byte("d"))
+	_, err = dcache.Get([]byte("d"))
+	assert.NotNil(err)
+
 	dcache.ApplyToState()
-	st.Commit()
+	_, err = dcache.Get([]byte("d"))
+	assert.NotNil(err)
 
-	rq1 := st.Query(abci.RequestQuery{Path: "/key", Data: []byte("name1")})
-	assert.NotNil(rq1)
-	assert.Equal(uint32(0), rq1.Code)
-	assert.Equal([]byte("dave"), rq1.Value)
-
-	//root := commit.Hash
-
-	// Try proof
-	rq2 := st.Query(abci.RequestQuery{Path: "/key", Data: []byte("name1"), Prove: true})
-	assert.NotNil(rq2)
-	assert.NotNil(rq2.Proof)
-	// TODO: Verify the proof
-	//fmt.Printf("Proof: %v\n", rq2.Proof)
+	st.Close()
 }
 
 func TestStoreIter(t *testing.T) {

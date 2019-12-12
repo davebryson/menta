@@ -6,7 +6,6 @@ import (
 	"io"
 
 	tmcrypto "github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"golang.org/x/crypto/ed25519"
 )
 
@@ -19,8 +18,6 @@ const (
 	PrivateKeySize = 64
 	// SignatureSize is the size, in bytes, of signatures generated and verified by this package.
 	SignatureSize = 64
-	// AddressSize is the size in bytes of an address extracted from the public key
-	AddressSize = 20
 )
 
 // PrivateKeyEd25519 is the private key container
@@ -31,9 +28,6 @@ type PublicKeyEd25519 [PublicKeySize]byte
 
 // Signature is the signature container
 type Signature [SignatureSize]byte
-
-// Address is the address container
-type Address [AddressSize]byte
 
 // GeneratePrivateKey generates a new private key
 func GeneratePrivateKey() PrivateKeyEd25519 {
@@ -130,19 +124,6 @@ func PublicKeyFromHex(h string) (PublicKeyEd25519, error) {
 	return PublicKeyFromBytes(bits)
 }
 
-// PublicKeyBytesToAddress returns the address for the bytes version of the public key
-func PublicKeyBytesToAddress(pubKeyBits []byte) Address {
-	results := tmhash.SumTruncated(pubKeyBits)
-	var addressBits [AddressSize]byte
-	copy(addressBits[:], results)
-	return Address(addressBits)
-}
-
-// ToAddress returns the associated address for the the key
-func (pubKey PublicKeyEd25519) ToAddress() Address {
-	return PublicKeyBytesToAddress(pubKey[:])
-}
-
 // Verify a signature and message
 func (pubKey PublicKeyEd25519) Verify(msg []byte, sig []byte) bool {
 	// make sure we use the same algorithm to sign
@@ -160,30 +141,4 @@ func (pubKey PublicKeyEd25519) Bytes() []byte {
 // ToHex returns the public key as a hex
 func (pubKey PublicKeyEd25519) ToHex() string {
 	return hex.EncodeToString(pubKey[:])
-}
-
-// ---- Address ----
-
-// AddressFromHex decodes a hex version of the address into an Address
-func AddressFromHex(h string) (Address, error) {
-	bits, err := hex.DecodeString(h)
-	if err != nil {
-		return Address{}, err
-	}
-	if len(bits) != AddressSize {
-		return Address{}, errors.New("address: not a valid address size")
-	}
-	var aBits [AddressSize]byte
-	copy(aBits[:], bits)
-	return Address(aBits), nil
-}
-
-// Bytes returns the address as bytes
-func (addy Address) Bytes() []byte {
-	return addy[:]
-}
-
-// ToHex returns the address as a hex
-func (addy Address) ToHex() string {
-	return hex.EncodeToString(addy[:])
 }

@@ -31,7 +31,4 @@ func TestBasics(t *testing.T) {
 	sig1 := sk1.Sign(msg)
 	assert.Equal(64, len(sig1))
 	assert.True(pk.Verify(msg, sig1))
-
-	addybits := sk1.PubKey().ToAddress().Bytes()
-	assert.Equal(20, len(addybits))
 }

@@ -1,12 +1,10 @@
 package store
 
 import (
-	"fmt"
+	"errors"
 
 	sdk "github.com/davebryson/menta/types"
 	proto "github.com/golang/protobuf/proto"
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto/merkle"
 
 	"github.com/tendermint/iavl"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -17,7 +15,10 @@ const (
 	StateDbName = "mstate"
 )
 
-var commitKey = []byte("/menta/commitinfo")
+var (
+	commitKey     = []byte("/menta/commitinfo")
+	ValueNotFound = errors.New("Store get: nil value for given key")
+)
 
 var _ sdk.Store = (*StateStore)(nil)
 
@@ -46,82 +47,26 @@ func (st *StateStore) Set(key, val []byte) {
 	st.tree.Set(key, val)
 }
 
-func (st *StateStore) Get(key []byte) []byte {
+func (st *StateStore) Delete(key []byte) {
+	st.tree.Remove(key)
+}
+
+// GetCommitted only returns committed data, nothing cached
+func (st *StateStore) GetCommitted(key []byte) ([]byte, error) {
+	return st.Get(key)
+}
+
+func (st *StateStore) Get(key []byte) ([]byte, error) {
 	_, bits := st.tree.Get(key)
-	return bits
+	if bits == nil {
+		return nil, ValueNotFound
+	}
+	return bits, nil
 }
 
 // IterateKeyRange - iterator non-inclusive
 func (st *StateStore) IterateKeyRange(start, end []byte, ascending bool, fn func(key []byte, value []byte) bool) bool {
 	return st.tree.IterateRange(start, end, ascending, fn)
-}
-
-// Select a query version from the store.
-func getQueryHeight(store *StateStore, queryVersion int64) int64 {
-	tree := store.tree
-	if queryVersion == 0 {
-		latest := tree.Version()
-		if tree.VersionExists(latest - 1) {
-			// Use the last version vs the current version
-			// if the user specifies 0 or makes no specfic request
-			return latest - 1
-		}
-		// If no previous version exists, use the latest
-		return latest
-	}
-	// Otherwise use what they requested
-	return queryVersion
-}
-
-// Query returns a value and/or proof from the tree.
-// TODO: This is not really exposed to the app yet via the Query Context
-func (st *StateStore) Query(req abci.RequestQuery) (res abci.ResponseQuery) {
-	// This code is all adapted from the Cosmos SDK
-	if req.Data == nil || len(req.Data) == 0 {
-		res.Code = sdk.BadQuery
-		res.Log = "Error: query requires a key"
-		return
-	}
-
-	queryKey := req.Data
-	queryPath := req.Path
-	queryVersion := getQueryHeight(st, req.Height)
-	tree := st.tree
-
-	switch queryPath {
-	case "/key":
-		res.Height = queryVersion
-		res.Key = queryKey
-		key := queryKey
-
-		if req.Prove {
-			value, proof, err := tree.GetVersionedWithProof(queryKey, queryVersion)
-			if err != nil {
-				res.Log = err.Error()
-				break
-			}
-			if proof == nil {
-				// Proof == nil implies that the store is empty.
-				if value != nil {
-					panic("unexpected value for an empty proof")
-				}
-			}
-			if value != nil {
-				res.Value = value
-				res.Proof = &merkle.Proof{Ops: []merkle.ProofOp{iavl.NewIAVLValueOp(key, proof).ProofOp()}}
-			} else {
-				// value not found
-				res.Value = nil
-				res.Proof = &merkle.Proof{Ops: []merkle.ProofOp{iavl.NewIAVLAbsenceOp(key, proof).ProofOp()}}
-			}
-		} else {
-			_, res.Value = tree.GetVersioned(queryKey, queryVersion)
-		}
-	default:
-		res.Log = fmt.Sprintf("Unexpected Query path: %v", queryPath)
-		res.Code = sdk.BadQuery
-	}
-	return
 }
 
 func (st *StateStore) Commit() sdk.CommitInfo {
