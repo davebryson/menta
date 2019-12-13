@@ -36,7 +36,7 @@ func (cache *KVCache) Set(key, val []byte) {
 	cache.storage[string(key)] = dataCacheObj{val, true, false}
 }
 
-// Remove a key/value
+// Delete a key/value
 func (cache *KVCache) Delete(key []byte) {
 	if cache.Exists(key) {
 		cache.storage[string(key)] = dataCacheObj{nil, false, true}
@@ -75,7 +75,7 @@ func (cache *KVCache) Get(key []byte) ([]byte, error) {
 		return value, nil
 	}
 
-	return nil, ValueNotFound
+	return nil, ErrValueNotFound
 }
 
 // IterateKeyRange returns results that are processed via the callback func

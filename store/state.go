@@ -11,17 +11,20 @@ import (
 )
 
 const (
-	cacheSize   = 10000
+	cacheSize = 10000
+	// StateDbName is the filename of the kvstore
 	StateDbName = "mstate"
 )
 
 var (
-	commitKey     = []byte("/menta/commitinfo")
-	ValueNotFound = errors.New("Store get: nil value for given key")
+	commitKey = []byte("/menta/commitinfo")
+	// ErrValueNotFound returned when the value for a key is nil
+	ErrValueNotFound = errors.New("Store get: nil value for given key")
 )
 
 var _ sdk.Store = (*StateStore)(nil)
 
+// StateStore provides access the the levelDb and Tree
 type StateStore struct {
 	db         dbm.DB
 	tree       *iavl.MutableTree
@@ -29,6 +32,8 @@ type StateStore struct {
 	numHistory int64
 }
 
+// NewStateStore creates a new instance.  If 'dbdir' == "", it'll
+// return an in-memory database
 func NewStateStore(dbdir string) *StateStore {
 	db := loadDb(dbdir)
 	ci := loadCommitData(db)
@@ -43,23 +48,28 @@ func NewStateStore(dbdir string) *StateStore {
 	}
 }
 
+// Set a k/v in the tree
 func (st *StateStore) Set(key, val []byte) {
 	st.tree.Set(key, val)
 }
 
+// Delete a k/v from the tree
 func (st *StateStore) Delete(key []byte) {
 	st.tree.Remove(key)
 }
 
 // GetCommitted returns only committed data, nothing cached
+// ** Implemented here to satisfy the KVStore interface.  Need
+// to improve this
 func (st *StateStore) GetCommitted(key []byte) ([]byte, error) {
 	return st.Get(key)
 }
 
+// Get returns committed data from the tree
 func (st *StateStore) Get(key []byte) ([]byte, error) {
 	_, bits := st.tree.Get(key)
 	if bits == nil {
-		return nil, ValueNotFound
+		return nil, ErrValueNotFound
 	}
 	return bits, nil
 }
@@ -69,6 +79,7 @@ func (st *StateStore) IterateKeyRange(start, end []byte, ascending bool, fn func
 	return st.tree.IterateRange(start, end, ascending, fn)
 }
 
+// Commit information about the current state to the db
 func (st *StateStore) Commit() sdk.CommitInfo {
 	hash, version, err := st.tree.SaveVersion()
 
@@ -90,14 +101,17 @@ func (st *StateStore) Commit() sdk.CommitInfo {
 	return com
 }
 
+// RefreshCache clears existing k/v from the cache
 func (st *StateStore) RefreshCache() sdk.Cache {
 	return NewCache(st)
 }
 
+// Close the underlying db
 func (st *StateStore) Close() {
 	st.db.Close()
 }
 
+// LoadCommitData from the db
 func loadCommitData(db dbm.DB) sdk.CommitInfo {
 	commitBytes := db.Get(commitKey)
 	var ci sdk.CommitInfo
@@ -110,6 +124,7 @@ func loadCommitData(db dbm.DB) sdk.CommitInfo {
 	return ci
 }
 
+// load the db
 func loadDb(dbdir string) dbm.DB {
 	if dbdir == "" {
 		return dbm.NewMemDB()
