@@ -7,16 +7,16 @@ type Service interface {
 	Route() string
 	// Init is called once, on the very first run of the application.
 	// Use this to load genesis data for your service
-	Init(TxContext)
+	Init(RWStore)
 	// Execute is the primary business logic of your service. This is the blockchain
 	// state transistion function
-	Execute(TxContext) Result
+	Execute(*SignedTransaction, RWStore) Result
 	// Query provides read access to service storage.
-	Query([]byte, QueryContext) Result
+	Query([]byte, QueryStore) Result
 }
 
 // ValidateTxHandler should be implemented to validate/check a transaction for
 // inclusion into the mempool.  This is called on 'checkTx'.  A returned non-zero
 // result.Code will exclude a transaction from consideration.  A Menta application has
 // only 1 of these
-type ValidateTxHandler func(ctx TxContext) Result
+type ValidateTxHandler func(*SignedTransaction, RWStore) Result

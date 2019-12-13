@@ -1,5 +1,7 @@
 package types
 
+import fmt "fmt"
+
 // KVStore is the base interface for all methods related to a store. See the store package
 type KVStore interface {
 	// Get from the cache or tree
@@ -30,4 +32,55 @@ type Store interface {
 	Close()
 	// Refresh the check/deliver caches
 	RefreshCache() Cache
+}
+
+// Creates the store prefix key.  Storage is scoped by the
+// service name
+func createServiceKey(serviceName string, key []byte) []byte {
+	return append([]byte(fmt.Sprintf("%s::", serviceName)), key...)
+}
+
+// Store for Service Txs
+type RWStore struct {
+	store       Cache
+	serviceName string
+}
+
+func NewRWStore(service string, store Cache) RWStore {
+	return RWStore{
+		store:       store,
+		serviceName: service,
+	}
+}
+
+func (rw RWStore) Insert(key, value []byte) {
+	prefixedKey := createServiceKey(rw.serviceName, key)
+	rw.store.Set(prefixedKey, value)
+}
+
+func (rw RWStore) Get(key []byte) ([]byte, error) {
+	prefixedKey := createServiceKey(rw.serviceName, key)
+	return rw.store.Get(prefixedKey)
+}
+
+func (rw RWStore) Delete(key []byte) {
+	prefixedKey := createServiceKey(rw.serviceName, key)
+	rw.store.Delete(prefixedKey)
+}
+
+type QueryStore struct {
+	store       Cache
+	serviceName string
+}
+
+func NewQueryStore(service string, store Cache) QueryStore {
+	return QueryStore{
+		store:       store,
+		serviceName: service,
+	}
+}
+
+func (qs QueryStore) Get(key []byte) ([]byte, error) {
+	prefixedKey := createServiceKey(qs.serviceName, key)
+	return qs.store.GetCommitted(prefixedKey)
 }

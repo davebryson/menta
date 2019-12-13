@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	CacheSize   = 1000
+	cacheSize   = 10000
 	StateDbName = "mstate"
 )
 
@@ -32,7 +32,7 @@ type StateStore struct {
 func NewStateStore(dbdir string) *StateStore {
 	db := loadDb(dbdir)
 	ci := loadCommitData(db)
-	tree := iavl.NewMutableTree(db, CacheSize)
+	tree := iavl.NewMutableTree(db, cacheSize)
 	tree.LoadVersion(ci.Version)
 
 	return &StateStore{
@@ -51,7 +51,7 @@ func (st *StateStore) Delete(key []byte) {
 	st.tree.Remove(key)
 }
 
-// GetCommitted only returns committed data, nothing cached
+// GetCommitted returns only committed data, nothing cached
 func (st *StateStore) GetCommitted(key []byte) ([]byte, error) {
 	return st.Get(key)
 }

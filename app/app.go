@@ -92,13 +92,13 @@ func (app *MentaApp) runTx(rawtx []byte, isCheck bool) sdk.Result {
 			// Nothing to do!
 			return sdk.Result{}
 		}
-		ctx := sdk.NewContext(tx.Service, app.checkCache, tx)
-		return app.onValidationHandler(ctx)
+		store := sdk.NewRWStore(tx.Service, app.checkCache)
+		return app.onValidationHandler(tx, store)
 	}
 
-	ctx := sdk.NewContext(tx.Service, app.deliverCache, tx)
+	store := sdk.NewRWStore(tx.Service, app.deliverCache)
 	service := app.router[tx.Service]
-	return service.Execute(ctx)
+	return service.Execute(tx, store)
 }
 
 // ---------------------------------------------------------------
@@ -110,8 +110,8 @@ func (app *MentaApp) runTx(rawtx []byte, isCheck bool) sdk.Result {
 // InitChain is ran once, on the very first run of the application chain.
 func (app *MentaApp) InitChain(req abci.RequestInitChain) (resp abci.ResponseInitChain) {
 	for name, serv := range app.router {
-		ctx := sdk.NewContext(name, app.deliverCache, nil)
-		serv.Init(ctx)
+		store := sdk.NewRWStore(name, app.deliverCache)
+		serv.Init(store)
 	}
 	return
 }
@@ -150,9 +150,8 @@ func (app *MentaApp) Query(query abci.RequestQuery) abci.ResponseQuery {
 		return res
 	}
 
-	// Problem: This should only read from committed state
-	ctx := sdk.NewQueryContext(service.Route(), app.checkCache)
-	result := service.Query(queryKey, ctx)
+	store := sdk.NewQueryStore(service.Route(), app.deliverCache)
+	result := service.Query(queryKey, store)
 
 	res.Code = result.Code
 	res.Value = result.Data

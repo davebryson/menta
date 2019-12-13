@@ -37,17 +37,17 @@ func makeTx(val uint32) ([]byte, error) {
 type CounterService struct{}
 
 func (srv CounterService) Route() string { return serviceName }
-func (srv CounterService) Init(ctx sdk.TxContext) {
-	ctx.Insert(stateKey, encodeCount(0))
+func (srv CounterService) Init(store sdk.RWStore) {
+	store.Insert(stateKey, encodeCount(0))
 }
-func (srv CounterService) Execute(ctx sdk.TxContext) sdk.Result {
-	ctx.Insert(stateKey, ctx.Tx.Msg)
+func (srv CounterService) Execute(tx *sdk.SignedTransaction, store sdk.RWStore) sdk.Result {
+	store.Insert(stateKey, tx.Msg)
 	return sdk.Result{
 		Log: "ok",
 	}
 }
-func (srv CounterService) Query(key []byte, ctx sdk.QueryContext) sdk.Result {
-	val, err := ctx.Get(key)
+func (srv CounterService) Query(key []byte, store sdk.QueryStore) sdk.Result {
+	val, err := store.Get(key)
 	if err != nil {
 		return sdk.ResultError(1, err.Error())
 	}
@@ -57,11 +57,11 @@ func (srv CounterService) Query(key []byte, ctx sdk.QueryContext) sdk.Result {
 	}
 }
 
-func ValidateTx(ctx sdk.TxContext) sdk.Result {
+func ValidateTx(tx *sdk.SignedTransaction, store sdk.RWStore) sdk.Result {
 	// Decode the incoming msg in the Tx
-	msgVal := decodeCount(ctx.Tx.Msg)
+	msgVal := decodeCount(tx.Msg)
 	// Decode the state
-	val, err := ctx.Get(stateKey)
+	val, err := store.Get(stateKey)
 	if err != nil {
 		return sdk.ResultError(2, "expected count")
 	}
@@ -74,7 +74,7 @@ func ValidateTx(ctx sdk.TxContext) sdk.Result {
 	}
 
 	// Increment the state for other checks
-	ctx.Insert(stateKey, encodeCount(msgVal))
+	store.Insert(stateKey, encodeCount(msgVal))
 
 	return sdk.Result{
 		Log: "ok",

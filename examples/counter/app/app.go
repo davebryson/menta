@@ -40,21 +40,21 @@ type CounterExampleService struct{}
 func (srv CounterExampleService) Route() string { return serviceName }
 
 // Init set the initial state
-func (srv CounterExampleService) Init(ctx sdk.TxContext) {
-	ctx.Insert(stateKey, encodeCount(0))
+func (srv CounterExampleService) Init(store sdk.RWStore) {
+	store.Insert(stateKey, encodeCount(0))
 }
 
 // Execute runs the core logic
-func (srv CounterExampleService) Execute(ctx sdk.TxContext) sdk.Result {
-	ctx.Insert(stateKey, ctx.Tx.Msg)
+func (srv CounterExampleService) Execute(tx *sdk.SignedTransaction, store sdk.RWStore) sdk.Result {
+	store.Insert(stateKey, tx.Msg)
 	return sdk.Result{
 		Log: "ok",
 	}
 }
 
 // Query returns the current committed state
-func (srv CounterExampleService) Query(key []byte, ctx sdk.QueryContext) sdk.Result {
-	val, err := ctx.Get(key)
+func (srv CounterExampleService) Query(key []byte, store sdk.QueryStore) sdk.Result {
+	val, err := store.Get(key)
 	if err != nil {
 		return sdk.ResultError(1, err.Error())
 	}
@@ -65,12 +65,12 @@ func (srv CounterExampleService) Query(key []byte, ctx sdk.QueryContext) sdk.Res
 }
 
 // ValidateCounterTx valdates new transactions
-func ValidateCounterTx(ctx sdk.TxContext) sdk.Result {
+func ValidateCounterTx(tx *sdk.SignedTransaction, store sdk.RWStore) sdk.Result {
 	// Decode the incoming msg in the Tx
-	msgVal := decodeCount(ctx.Tx.Msg)
+	msgVal := decodeCount(tx.Msg)
 
 	// Decode the state
-	val, err := ctx.Get(stateKey)
+	val, err := store.Get(stateKey)
 	if err != nil {
 		return sdk.ResultError(2, "expected count")
 	}
@@ -83,7 +83,7 @@ func ValidateCounterTx(ctx sdk.TxContext) sdk.Result {
 	}
 
 	// Increment the state so other checks are correct
-	ctx.Insert(stateKey, encodeCount(msgVal))
+	store.Insert(stateKey, encodeCount(msgVal))
 
 	return sdk.Result{
 		Log: "ok",
