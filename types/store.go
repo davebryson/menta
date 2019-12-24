@@ -1,86 +1,99 @@
 package types
 
-import fmt "fmt"
+import (
+	"errors"
 
-// KVStore is the base interface for all methods related to a store. See the store package
-type KVStore interface {
-	// Get from the cache or tree
-	Get(key []byte) ([]byte, error)
-	// Get only from committed data
-	GetCommitted(key []byte) ([]byte, error)
-	// Set to the cache or tree
-	Set(key, value []byte)
-	// Delete a key/value pair
-	Delete(key []byte)
-	// IterateKeyRange over the tree
-	IterateKeyRange(start, end []byte, ascending bool, fn func(key []byte, value []byte) bool) bool
+	"github.com/davebryson/menta/store"
+)
+
+// re-export store types for 'sdk' usage
+type (
+	KVStore = store.KVStore
+	Store   = store.Store
+	Cache   = store.Cache
+)
+
+// PrefixedRWStore is used to provide scoped, read/write access to storage.
+// Keys in the store are automatically prefixed with the given prefix name.
+// For example, this is used by Services to ensure all storage keys are
+// prefixed with the service name
+type PrefixedRWStore struct {
+	prefix []byte
+	store  KVStore
 }
 
-// Cache extends KVStore adding an additional method to implement on a cache
-type Cache interface {
-	KVStore
-	// Dump the cache to the tree
-	ApplyToState()
-}
-
-// Store extends KVStore
-type Store interface {
-	KVStore
-	// Commit is called on Abci commit to commit the tree to storage and update the hash
-	Commit() CommitInfo
-	// Close the store
-	Close()
-	// Refresh the check/deliver caches
-	RefreshCache() Cache
-}
-
-// Creates the store prefix key.  Storage is scoped by the
-// service name
-func createServiceKey(serviceName string, key []byte) []byte {
-	return append([]byte(fmt.Sprintf("%s::", serviceName)), key...)
-}
-
-// Store for Service Txs
-type RWStore struct {
-	store       Cache
-	serviceName string
-}
-
-func NewRWStore(service string, store Cache) RWStore {
-	return RWStore{
-		store:       store,
-		serviceName: service,
+// NewPrefixRW creates an instance
+func NewPrefixRW(serviceName string, store KVStore) PrefixedRWStore {
+	return PrefixedRWStore{
+		prefix: []byte(serviceName),
+		store:  store,
 	}
 }
 
-func (rw RWStore) Insert(key, value []byte) {
-	prefixedKey := createServiceKey(rw.serviceName, key)
-	rw.store.Set(prefixedKey, value)
+func (ps PrefixedRWStore) key(key []byte) []byte {
+	return prefixKey(ps.prefix, key)
 }
 
-func (rw RWStore) Get(key []byte) ([]byte, error) {
-	prefixedKey := createServiceKey(rw.serviceName, key)
-	return rw.store.Get(prefixedKey)
+// Get something from the store by key
+func (ps PrefixedRWStore) Get(key []byte) ([]byte, error) {
+	data, err := ps.store.Get(ps.key(key))
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
-func (rw RWStore) Delete(key []byte) {
-	prefixedKey := createServiceKey(rw.serviceName, key)
-	rw.store.Delete(prefixedKey)
+// Has : does the store contain the given key?
+func (ps PrefixedRWStore) Has(key []byte) bool {
+	_, err := ps.Get(key)
+	return err == nil
 }
 
-type QueryStore struct {
-	store       Cache
-	serviceName string
+// Insert a key/value into the store
+func (ps PrefixedRWStore) Insert(key, value []byte) error {
+	if key == nil {
+		return errors.New("PrefixStore: Key is nil")
+	}
+	if value == nil {
+		return errors.New("PrefixStore: Value is nil")
+	}
+	ps.store.Set(ps.key(key), value)
+	return nil
 }
 
-func NewQueryStore(service string, store Cache) QueryStore {
-	return QueryStore{
-		store:       store,
-		serviceName: service,
+// Delete a key/value from the store
+func (ps PrefixedRWStore) Delete(key []byte) {
+	ps.store.Delete(ps.key(key))
+}
+
+// generate a prefixed key
+func prefixKey(service, key []byte) []byte {
+	res := make([]byte, len(service)+len(key))
+	copy(res, service)
+	copy(res[len(service):], key)
+	return res
+}
+
+// PrefixedReadOnlyStore provided scoped, read-only access to storage.
+// Data returned is from committed data (not the cache).
+type PrefixedReadOnlyStore struct {
+	prefix []byte
+	store  KVStore
+}
+
+func (pr PrefixedReadOnlyStore) key(key []byte) []byte {
+	return prefixKey(pr.prefix, key)
+}
+
+// NewPrefixReadOnly creates a new instance
+func NewPrefixReadOnly(serviceName string, store KVStore) PrefixedReadOnlyStore {
+	return PrefixedReadOnlyStore{
+		prefix: []byte(serviceName),
+		store:  store,
 	}
 }
 
-func (qs QueryStore) Get(key []byte) ([]byte, error) {
-	prefixedKey := createServiceKey(qs.serviceName, key)
-	return qs.store.GetCommitted(prefixedKey)
+// Get a value for the given key from committed data
+func (pr PrefixedReadOnlyStore) Get(key []byte) ([]byte, error) {
+	return pr.store.GetCommitted(pr.key(key))
 }

@@ -16,12 +16,8 @@ type MentaApp struct {
 	name         string
 	state        *store.StateStore
 	deliverCache *store.KVCache
-	checkCache   *store.KVCache
 	Config       *cfg.Config
-	// CheckTx
-	onValidationHandler sdk.ValidateTxHandler
-	// DeliverTx router
-	router map[string]sdk.Service
+	router       map[string]sdk.Service
 }
 
 // NewApp returns a new instance of MentaApp where appname is the name of
@@ -39,7 +35,6 @@ func NewApp(appname, homedir string) *MentaApp {
 		state:        state,
 		Config:       config,
 		deliverCache: state.RefreshCache().(*store.KVCache),
-		checkCache:   state.RefreshCache().(*store.KVCache),
 		router:       make(map[string]sdk.Service, 0),
 	}
 }
@@ -53,25 +48,16 @@ func NewMockApp() *MentaApp {
 		name:         "mockapp",
 		state:        state,
 		deliverCache: state.RefreshCache().(*store.KVCache),
-		checkCache:   state.RefreshCache().(*store.KVCache),
 		router:       make(map[string]sdk.Service, 0),
 	}
 }
 
-// ValidateTxHandler : Add this handler to validate your transactions.  This is NOT
-// required as you can also validate tx in your Service if you want.
-// Usually this is a good place to put signature verification.
-// There is only 1 of these per application.
-func (app *MentaApp) ValidateTxHandler(fn sdk.ValidateTxHandler) {
-	app.onValidationHandler = fn
-}
-
 // AddService : registers your service with Menta
 func (app *MentaApp) AddService(service sdk.Service) {
-	_, exists := app.router[service.Route()]
+	_, exists := app.router[service.Name()]
 	if !exists {
 		// First come, first serve
-		app.router[service.Route()] = service
+		app.router[service.Name()] = service
 	}
 }
 
@@ -88,17 +74,13 @@ func (app *MentaApp) runTx(rawtx []byte, isCheck bool) sdk.Result {
 	}
 
 	if isCheck {
-		if app.onValidationHandler == nil {
-			// Nothing to do!
-			return sdk.Result{}
-		}
-		store := sdk.NewRWStore(tx.Service, app.checkCache)
-		return app.onValidationHandler(tx, store)
+		return validateForCheckTx(tx)
 	}
 
-	store := sdk.NewRWStore(tx.Service, app.deliverCache)
 	service := app.router[tx.Service]
-	return service.Execute(tx, store)
+	//store := store.NewPrefixRW(service.Name(), app.deliverCache)
+	ctx := sdk.NewTxContext(service.Name(), tx.Sender, tx.Msgid, tx.Msg, app.deliverCache)
+	return service.Execute(ctx)
 }
 
 // ---------------------------------------------------------------
@@ -109,9 +91,15 @@ func (app *MentaApp) runTx(rawtx []byte, isCheck bool) sdk.Result {
 
 // InitChain is ran once, on the very first run of the application chain.
 func (app *MentaApp) InitChain(req abci.RequestInitChain) (resp abci.ResponseInitChain) {
+	data := req.GetAppStateBytes()
+	// First register all services
+	registery := sdk.NewPrefixRW(sdk.REGISTERED_SERVICE_PREFIX, app.deliverCache)
 	for name, serv := range app.router {
-		store := sdk.NewRWStore(name, app.deliverCache)
-		serv.Init(store)
+		// register service names
+		registery.Insert([]byte(name), []byte("ok"))
+		// call initialize on each service
+		store := sdk.NewPrefixRW(name, app.deliverCache)
+		serv.Initialize(data, store)
 	}
 	return
 }
@@ -150,7 +138,7 @@ func (app *MentaApp) Query(query abci.RequestQuery) abci.ResponseQuery {
 		return res
 	}
 
-	store := sdk.NewQueryStore(service.Route(), app.deliverCache)
+	store := sdk.NewPrefixReadOnly(service.Name(), app.deliverCache)
 	result := service.Query(queryKey, store)
 
 	res.Code = result.Code
@@ -202,7 +190,6 @@ func (app *MentaApp) Commit() abci.ResponseCommit {
 	commitresults := app.state.Commit()
 
 	app.deliverCache = app.state.RefreshCache().(*store.KVCache)
-	app.checkCache = app.state.RefreshCache().(*store.KVCache)
 
 	return abci.ResponseCommit{Data: commitresults.Hash}
 }
@@ -210,4 +197,11 @@ func (app *MentaApp) Commit() abci.ResponseCommit {
 // SetOption - not used
 func (app *MentaApp) SetOption(req abci.RequestSetOption) abci.ResponseSetOption {
 	return abci.ResponseSetOption{}
+}
+
+func validateForCheckTx(tx *sdk.SignedTransaction) sdk.Result {
+	if tx.Verify() {
+		return sdk.Result{}
+	}
+	return sdk.ResultError(1, "Tx failed validation")
 }

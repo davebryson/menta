@@ -13,9 +13,3 @@ message SignedTransaction {
   bytes nonce = 5;
   bytes sig = 6;
 }
-
-// State commit information
-message CommitInfo {
-  bytes hash = 1;
-  int64 version = 2;
-}

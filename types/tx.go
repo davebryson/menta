@@ -39,6 +39,7 @@ func (tx *SignedTransaction) hashMsg() ([]byte, error) {
 
 // Sign a transaction
 func (tx *SignedTransaction) Sign(sk crypto.PrivateKeyEd25519) error {
+	tx.Sender = sk.PubKey().Bytes()
 	msgHash, err := tx.hashMsg()
 	if err != nil {
 		return err
@@ -47,11 +48,16 @@ func (tx *SignedTransaction) Sign(sk crypto.PrivateKeyEd25519) error {
 	return nil
 }
 
-// Verify a Tx against a given public key
-func (tx *SignedTransaction) Verify(pubKey crypto.PublicKeyEd25519) bool {
+// Verify a Tx against based on the sender's public key
+func (tx *SignedTransaction) Verify() bool {
 	msg, err := tx.hashMsg()
 	if err != nil {
 		return false
 	}
-	return pubKey.Verify(msg, tx.Sig)
+	// Get the public key from the sender field
+	pk, err := crypto.PublicKeyFromBytes(tx.Sender)
+	if err != nil {
+		return false
+	}
+	return pk.Verify(msg, tx.Sig)
 }

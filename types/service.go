@@ -1,22 +1,18 @@
 package types
 
+const REGISTERED_SERVICE_PREFIX = "_registered::service_"
+
 // Service is the primary interface to implement for application services.
 // A given MentaApp may have 1 or more of these.
 type Service interface {
-	// Route is the unique name of the service. Used to register your service in Menta
-	Route() string
+	// Name is the unique name of the service. Used to register your service in Menta
+	Name() string
 	// Init is called once, on the very first run of the application.
 	// Use this to load genesis data for your service
-	Init(RWStore)
+	Initialize(data []byte, store PrefixedRWStore)
 	// Execute is the primary business logic of your service. This is the blockchain
 	// state transistion function
-	Execute(*SignedTransaction, RWStore) Result
+	Execute(ctx TxContext) Result
 	// Query provides read access to service storage.
-	Query([]byte, QueryStore) Result
+	Query(key []byte, store PrefixedReadOnlyStore) Result
 }
-
-// ValidateTxHandler should be implemented to validate/check a transaction for
-// inclusion into the mempool.  This is called on 'checkTx'.  A returned non-zero
-// result.Code will exclude a transaction from consideration.  A Menta application has
-// only 1 of these
-type ValidateTxHandler func(*SignedTransaction, RWStore) Result

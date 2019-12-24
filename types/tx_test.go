@@ -24,7 +24,7 @@ func TestTx(t *testing.T) {
 	assert.Equal("one", txBack.Service)
 	assert.Equal([]byte("random"), txBack.Nonce)
 	assert.Equal([]byte("hello"), txBack.Msg)
-	assert.True(txBack.Verify(bob.PubKey()))
+	assert.True(txBack.Verify())
 
 	// Backwards from hex of private key
 	bobSecretHex := bob.ToHex()

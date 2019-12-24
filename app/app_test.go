@@ -1,90 +1,17 @@
 package app
 
 import (
-	"encoding/binary"
+	"fmt"
 	"testing"
 
-	sdk "github.com/davebryson/menta/types"
+	"github.com/davebryson/menta/examples/services/counter"
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
 
-var (
-	stateKey    = []byte("countkey")
-	serviceName = "counter_test"
-)
-
-var _ sdk.Service = (*CounterService)(nil)
-
-func encodeCount(val uint32) []byte {
-	buf := make([]byte, 4)
-	binary.BigEndian.PutUint32(buf, val)
-	return buf
-}
-
-func decodeCount(bits []byte) uint32 {
-	return binary.BigEndian.Uint32(bits)
-}
-
-func makeTx(val uint32) ([]byte, error) {
-	encoded := encodeCount(val)
-	t := &sdk.SignedTransaction{Service: serviceName, Msg: encoded}
-	return sdk.EncodeTx(t)
-}
-
-// Service implementation
-
-type CounterService struct{}
-
-func (srv CounterService) Route() string { return serviceName }
-func (srv CounterService) Init(store sdk.RWStore) {
-	store.Insert(stateKey, encodeCount(0))
-}
-func (srv CounterService) Execute(tx *sdk.SignedTransaction, store sdk.RWStore) sdk.Result {
-	store.Insert(stateKey, tx.Msg)
-	return sdk.Result{
-		Log: "ok",
-	}
-}
-func (srv CounterService) Query(key []byte, store sdk.QueryStore) sdk.Result {
-	val, err := store.Get(key)
-	if err != nil {
-		return sdk.ResultError(1, err.Error())
-	}
-	return sdk.Result{
-		Code: 0,
-		Data: val,
-	}
-}
-
-func ValidateTx(tx *sdk.SignedTransaction, store sdk.RWStore) sdk.Result {
-	// Decode the incoming msg in the Tx
-	msgVal := decodeCount(tx.Msg)
-	// Decode the state
-	val, err := store.Get(stateKey)
-	if err != nil {
-		return sdk.ResultError(2, "expected count")
-	}
-	stateCount := decodeCount(val)
-
-	// msg should match the expected next state
-	expected := stateCount + uint32(1)
-	if msgVal != expected {
-		return sdk.ResultError(2, "bad count")
-	}
-
-	// Increment the state for other checks
-	store.Insert(stateKey, encodeCount(msgVal))
-
-	return sdk.Result{
-		Log: "ok",
-	}
-}
-
 func createApp() *MentaApp {
 	app := NewMockApp() // inmemory tree
-	app.ValidateTxHandler(ValidateTx)
-	app.AddService(CounterService{})
+	app.AddService(counter.CounterService{})
 	return app
 }
 
@@ -92,6 +19,8 @@ func createApp() *MentaApp {
 func TestAppCallbacks(t *testing.T) {
 	assert := assert.New(t)
 	app := createApp()
+
+	alice := counter.CreateWallet()
 
 	// --- Simulate running it ---
 
@@ -111,41 +40,19 @@ func TestAppCallbacks(t *testing.T) {
 	// Should == the first commit hash
 	assert.Equal(c1.Data, hash1)
 
-	// Call Query & check the initial state
-	respQ := app.Query(abci.RequestQuery{Path: serviceName, Data: stateKey})
-	assert.Equal(uint32(0), respQ.Code)
-	assert.Equal(uint32(0), decodeCount(respQ.GetValue()))
+	// Fail: Call Query
+	respQ := app.Query(abci.RequestQuery{Path: counter.ServiceName, Data: alice.PubKey()})
+	assert.Equal(uint32(1), respQ.Code)
 
-	// Run check
-	// Ok
-	tx, err := makeTx(1)
+	// Pass: Run checkTx
+	tx, err := alice.NewTx(1)
 	assert.Nil(err)
 	chtx := app.CheckTx(abci.RequestCheckTx{Tx: tx})
-	assert.Equal(abci.ResponseCheckTx{Log: "ok", Code: 0}, chtx)
-
-	// Run check
-	// Bad count - should be 2
-	badtx, _ := makeTx(4)
-	chtx = app.CheckTx(abci.RequestCheckTx{Tx: badtx})
-	assert.Equal(abci.ResponseCheckTx{Log: "bad count", Code: 2}, chtx)
-
-	// Run check
-	// Should be good
-	tx1, err := makeTx(2)
-	chtx = app.CheckTx(abci.RequestCheckTx{Tx: tx1})
-	assert.Equal(abci.ResponseCheckTx{Log: "ok", Code: 0}, chtx)
-
-	// Check cache should return 0 as it only reads committed state
-	respQ = app.Query(abci.RequestQuery{Path: serviceName, Data: stateKey})
-	assert.Equal(uint32(0), respQ.Code)
-	assert.Equal(uint32(0), decodeCount(respQ.GetValue()))
+	assert.Equal(abci.ResponseCheckTx{Code: 0}, chtx)
 
 	// Run Deliver handlers
 	dtx := app.DeliverTx(abci.RequestDeliverTx{Tx: tx})
-	assert.Equal(abci.ResponseDeliverTx{Log: "ok", Code: 0}, dtx)
-
-	dtx = app.DeliverTx(abci.RequestDeliverTx{Tx: tx1})
-	assert.Equal(abci.ResponseDeliverTx{Log: "ok", Code: 0}, dtx)
+	assert.Equal(uint32(0), dtx.Code)
 
 	// Commit the new state to storage
 	commit := app.Commit()
@@ -154,7 +61,12 @@ func TestAppCallbacks(t *testing.T) {
 	// Should be a new apphash
 	assert.NotEqual(c1.Data, commit.Data)
 
-	// Now committed state should == 2
-	respQ = app.Query(abci.RequestQuery{Path: serviceName, Data: stateKey})
-	assert.Equal(uint32(2), decodeCount(respQ.GetValue()))
+	// Now committed state should == 1
+	respQ = app.Query(abci.RequestQuery{Path: counter.ServiceName, Data: alice.PubKey()})
+	fmt.Printf("%v", respQ)
+	assert.Equal(uint32(0), respQ.Code)
+
+	count, err := counter.DecodeCount(respQ.GetValue())
+	assert.Nil(err)
+	assert.Equal(uint32(1), count.Current)
 }

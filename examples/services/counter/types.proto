@@ -1,0 +1,8 @@
+syntax = "proto3";
+package counter;
+
+// Message
+message Increment { uint32 value = 1; }
+
+// Storage
+message CountValue { uint32 current = 1; }

@@ -7,6 +7,7 @@ require (
 	github.com/etcd-io/bbolt v1.3.3 // indirect
 	github.com/fortytw2/leaktest v1.3.0 // indirect
 	github.com/go-kit/kit v0.9.0 // indirect
+	github.com/gogo/protobuf v1.2.1
 	github.com/golang/protobuf v1.3.1
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/magiconair/properties v1.8.1 // indirect

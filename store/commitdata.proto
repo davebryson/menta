@@ -1,0 +1,8 @@
+syntax = "proto3";
+package store;
+
+// State commit information
+message CommitData {
+  bytes hash = 1;
+  int64 version = 2;
+}

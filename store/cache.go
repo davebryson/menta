@@ -3,12 +3,10 @@ package store
 // In-memory cache used by the menta app
 import (
 	"sort"
-
-	sdk "github.com/davebryson/menta/types"
 )
 
 // Implements KVCache
-var _ sdk.Cache = (*KVCache)(nil)
+var _ Cache = (*KVCache)(nil)
 
 // Used to track whether a k/v pair has been updated.
 type dataCacheObj struct {
@@ -38,13 +36,13 @@ func (cache *KVCache) Set(key, val []byte) {
 
 // Delete a key/value
 func (cache *KVCache) Delete(key []byte) {
-	if cache.Exists(key) {
+	if cache.Has(key) {
 		cache.storage[string(key)] = dataCacheObj{nil, false, true}
 	}
 }
 
 // Exists - checks for a given key
-func (cache *KVCache) Exists(key []byte) bool {
+func (cache *KVCache) Has(key []byte) bool {
 	_, err := cache.Get(key)
 	if err == nil {
 		return true

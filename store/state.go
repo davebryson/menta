@@ -3,7 +3,6 @@ package store
 import (
 	"errors"
 
-	sdk "github.com/davebryson/menta/types"
 	proto "github.com/golang/protobuf/proto"
 
 	"github.com/tendermint/iavl"
@@ -22,13 +21,13 @@ var (
 	ErrValueNotFound = errors.New("Store get: nil value for given key")
 )
 
-var _ sdk.Store = (*StateStore)(nil)
+var _ Store = (*StateStore)(nil)
 
 // StateStore provides access the the levelDb and Tree
 type StateStore struct {
 	db         dbm.DB
 	tree       *iavl.MutableTree
-	CommitInfo sdk.CommitInfo
+	CommitInfo CommitData
 	numHistory int64
 }
 
@@ -74,13 +73,18 @@ func (st *StateStore) Get(key []byte) ([]byte, error) {
 	return bits, nil
 }
 
+func (st *StateStore) Has(key []byte) bool {
+	_, err := st.Get(key)
+	return err != nil
+}
+
 // IterateKeyRange - iterator non-inclusive
 func (st *StateStore) IterateKeyRange(start, end []byte, ascending bool, fn func(key []byte, value []byte) bool) bool {
 	return st.tree.IterateRange(start, end, ascending, fn)
 }
 
 // Commit information about the current state to the db
-func (st *StateStore) Commit() sdk.CommitInfo {
+func (st *StateStore) Commit() CommitData {
 	hash, version, err := st.tree.SaveVersion()
 
 	// from cosmos-sdk iavlstore - Release an old version of history
@@ -90,7 +94,7 @@ func (st *StateStore) Commit() sdk.CommitInfo {
 	}
 
 	// save commit to db
-	com := sdk.CommitInfo{Version: version, Hash: hash}
+	com := CommitData{Version: version, Hash: hash}
 	bits, err := proto.Marshal(&com)
 	if err != nil {
 		panic(err)
@@ -102,7 +106,7 @@ func (st *StateStore) Commit() sdk.CommitInfo {
 }
 
 // RefreshCache clears existing k/v from the cache
-func (st *StateStore) RefreshCache() sdk.Cache {
+func (st *StateStore) RefreshCache() Cache {
 	return NewCache(st)
 }
 
@@ -112,9 +116,9 @@ func (st *StateStore) Close() {
 }
 
 // LoadCommitData from the db
-func loadCommitData(db dbm.DB) sdk.CommitInfo {
+func loadCommitData(db dbm.DB) CommitData {
 	commitBytes := db.Get(commitKey)
-	var ci sdk.CommitInfo
+	var ci CommitData
 	if commitBytes != nil {
 		err := proto.Unmarshal(commitBytes, &ci)
 		if err != nil {
