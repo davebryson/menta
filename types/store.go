@@ -6,23 +6,17 @@ import (
 	"github.com/davebryson/menta/store"
 )
 
-// re-export store types for 'sdk' usage
-type (
-	KVStore = store.KVStore
-	Store   = store.Store
-	Cache   = store.Cache
-)
+// KVStore re-exported for the sdk
+type KVStore = store.KVStore
 
-// PrefixedRWStore is used to provide scoped, read/write access to storage.
+// NamedStore is used to provide scoped, read/write access to storage.
 // Keys in the store are automatically prefixed with the given prefix name.
-// For example, this is used by Services to ensure all storage keys are
-// prefixed with the service name
 type NamedStore struct {
 	prefix []byte
 	store  KVStore
 }
 
-// New creates an instance
+// NewNamedStore creates an instance
 func NewNamedStore(serviceName string, store KVStore) NamedStore {
 	return NamedStore{
 		prefix: []byte(serviceName),
@@ -43,6 +37,7 @@ func (ps NamedStore) Get(key []byte) ([]byte, error) {
 	return data, nil
 }
 
+// Query a value by key from committed state
 func (ps NamedStore) Query(key []byte) ([]byte, error) {
 	data, err := ps.store.GetCommitted(ps.key(key))
 	if err != nil {
@@ -57,7 +52,7 @@ func (ps NamedStore) Has(key []byte) bool {
 	return err == nil
 }
 
-// Insert a key/value into the store
+// Put a key/value into the store
 func (ps NamedStore) Put(key, value []byte) error {
 	if key == nil {
 		return errors.New("PrefixStore: Key is nil")

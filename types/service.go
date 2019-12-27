@@ -11,6 +11,6 @@ type Service interface {
 	// Execute is the primary business logic of your service. This is the blockchain
 	// state transistion function
 	Execute(sender []byte, msgid uint32, message []byte, store KVStore) Result
-	// Query provides read access to service storage.
+	// Query provides read access to storage.
 	Query(key []byte, store KVStore) Result
 }

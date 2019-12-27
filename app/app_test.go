@@ -11,7 +11,7 @@ import (
 
 func createApp() *MentaApp {
 	app := NewMockApp() // inmemory tree
-	app.AddService(counter.Service{})
+	app.AddService(&counter.Service{})
 	return app
 }
 
