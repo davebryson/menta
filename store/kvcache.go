@@ -41,7 +41,7 @@ func (cache *KVCache) Delete(key []byte) {
 	}
 }
 
-// Exists - checks for a given key
+// Has - checks for a given key
 func (cache *KVCache) Has(key []byte) bool {
 	_, err := cache.Get(key)
 	if err == nil {
