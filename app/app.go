@@ -3,8 +3,6 @@
 package app
 
 import (
-	"fmt"
-
 	"github.com/davebryson/menta/storage"
 	sdk "github.com/davebryson/menta/types"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -180,9 +178,7 @@ func (app *MentaApp) EndBlock(req abci.RequestEndBlock) (resp abci.ResponseEndBl
 // Commit to state tree, refresh caches
 func (app *MentaApp) Commit() abci.ResponseCommit {
 	commitresults := app.store.Commit(app.cache.ToBatch())
-	fmt.Printf("commit: %v\n", commitresults)
 	app.cache = storage.NewCache(app.store.Snapshot())
-	fmt.Println("reset cache")
 	return abci.ResponseCommit{Data: commitresults.Hash}
 }
 

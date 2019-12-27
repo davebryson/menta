@@ -4,12 +4,10 @@ import (
 	"errors"
 
 	"github.com/davebryson/menta/storage"
-	"github.com/davebryson/menta/store"
 )
 
 // KVStore re-exported for the sdk
 type (
-	KVStore  = store.KVStore
 	Snapshot = storage.TreeReader
 	Cache    = storage.Cache
 )

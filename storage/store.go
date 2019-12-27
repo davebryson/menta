@@ -97,6 +97,10 @@ func (st *Store) Commit(batch map[string]CacheOp) CommitData {
 	return com
 }
 
+func (st *Store) Close() {
+	st.db.Close()
+}
+
 // LoadCommitData from the db
 func loadCommitData(db dbm.DB) CommitData {
 	commitBytes := db.Get(commitKey)
