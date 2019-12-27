@@ -78,9 +78,7 @@ func (app *MentaApp) runTx(rawtx []byte, isCheck bool) sdk.Result {
 	}
 
 	service := app.router[tx.Service]
-	//store := store.NewPrefixRW(service.Name(), app.deliverCache)
-	ctx := sdk.NewTxContext(service.Name(), tx.Sender, tx.Msgid, tx.Msg, app.deliverCache)
-	return service.Execute(ctx)
+	return service.Execute(tx.Sender, tx.Msgid, tx.Msg, app.deliverCache)
 }
 
 // ---------------------------------------------------------------
@@ -92,14 +90,9 @@ func (app *MentaApp) runTx(rawtx []byte, isCheck bool) sdk.Result {
 // InitChain is ran once, on the very first run of the application chain.
 func (app *MentaApp) InitChain(req abci.RequestInitChain) (resp abci.ResponseInitChain) {
 	data := req.GetAppStateBytes()
-	// First register all services
-	registery := sdk.NewPrefixRW(sdk.REGISTERED_SERVICE_PREFIX, app.deliverCache)
-	for name, serv := range app.router {
-		// register service names
-		registery.Insert([]byte(name), []byte("ok"))
+	for _, serv := range app.router {
 		// call initialize on each service
-		store := sdk.NewPrefixRW(name, app.deliverCache)
-		serv.Initialize(data, store)
+		serv.Initialize(data, app.deliverCache)
 	}
 	return
 }
@@ -138,8 +131,7 @@ func (app *MentaApp) Query(query abci.RequestQuery) abci.ResponseQuery {
 		return res
 	}
 
-	store := sdk.NewPrefixReadOnly(service.Name(), app.deliverCache)
-	result := service.Query(queryKey, store)
+	result := service.Query(queryKey, app.deliverCache)
 
 	res.Code = result.Code
 	res.Value = result.Data

@@ -11,7 +11,7 @@ import (
 
 func createApp() *MentaApp {
 	app := NewMockApp() // inmemory tree
-	app.AddService(counter.CounterService{})
+	app.AddService(counter.Service{})
 	return app
 }
 
@@ -36,7 +36,7 @@ func TestAppCallbacks(t *testing.T) {
 	// block height should be 1 because we committed
 	assert.Equal(int64(1), result.GetLastBlockHeight())
 	hash1 := result.GetLastBlockAppHash()
-	assert.NotNil(hash1)
+	assert.Nil(hash1)
 	// Should == the first commit hash
 	assert.Equal(c1.Data, hash1)
 

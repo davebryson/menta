@@ -14,19 +14,19 @@ import (
 )
 
 const (
-	HomeDir     = "counterdata"
-	AliceWallet = "alice_wallet"
+	homeDir     = "counterdata"
+	aliceWallet = "alice_wallet"
 	rpcAddr     = "tcp://localhost:26657"
 )
 
 // This is the counter application
 func createApp() *menta.MentaApp {
 	// runs tendermint init if needed
-	menta.InitTendermint(HomeDir)
+	menta.InitTendermint(homeDir)
 	// setup the app
-	app := menta.NewApp("counter-example", HomeDir)
-	// add the service
-	app.AddService(counter.CounterService{})
+	app := menta.NewApp("counter-example", homeDir)
+	// Register the service
+	app.AddService(counter.Service{})
 
 	return app
 }
@@ -37,8 +37,8 @@ func RunApp() {
 	app.Run()
 }
 
-func QueryCounter() {
-	alice := counter.WalletFromSeed(AliceWallet)
+func queryCounter() {
+	alice := counter.WalletFromSeed(aliceWallet)
 	client := rpcclient.NewHTTP(rpcAddr, "/websocket")
 	result, err := client.ABCIQuery(counter.ServiceName, alice.PubKey())
 	if err != nil {
@@ -54,8 +54,8 @@ func QueryCounter() {
 	fmt.Printf(" ==> %v\n", count)
 }
 
-func SendTransaction(val uint32) {
-	alice := counter.WalletFromSeed(AliceWallet)
+func sendTransaction(val uint32) {
+	alice := counter.WalletFromSeed(aliceWallet)
 	txbits, err := alice.NewTx(val)
 	if err != nil {
 		fmt.Println(err)
@@ -105,7 +105,7 @@ func main() {
 					fmt.Printf("Error: '%v' is not a valid number\n", val)
 					return nil
 				}
-				SendTransaction(uint32(i))
+				sendTransaction(uint32(i))
 				return nil
 			},
 		},
@@ -113,7 +113,7 @@ func main() {
 			Name:  "state",
 			Usage: "Check state",
 			Action: func(c *cli.Context) error {
-				QueryCounter()
+				queryCounter()
 				return nil
 			},
 		},
