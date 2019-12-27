@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/davebryson/menta/examples/services/counter"
@@ -39,19 +38,16 @@ func TestAppCallbacks(t *testing.T) {
 	assert.Nil(hash1)
 	// Should == the first commit hash
 	assert.Equal(c1.Data, hash1)
-	fmt.Println("after info")
 
 	// Fail: Call Query
 	respQ := app.Query(abci.RequestQuery{Path: counter.ServiceName, Data: alice.PubKey()})
 	assert.Equal(uint32(1), respQ.Code)
-	fmt.Println("after query")
 
 	// Pass: Run checkTx
 	tx, err := alice.NewTx(1)
 	assert.Nil(err)
 	chtx := app.CheckTx(abci.RequestCheckTx{Tx: tx})
 	assert.Equal(abci.ResponseCheckTx{Code: 0}, chtx)
-	fmt.Println("after chtx")
 
 	// Run Deliver handlers
 	dtx := app.DeliverTx(abci.RequestDeliverTx{Tx: tx})
@@ -66,7 +62,6 @@ func TestAppCallbacks(t *testing.T) {
 
 	// Now committed state should == 1
 	respQ = app.Query(abci.RequestQuery{Path: counter.ServiceName, Data: alice.PubKey()})
-	fmt.Printf("%v", respQ)
 	assert.Equal(uint32(0), respQ.Code)
 
 	count, err := counter.DecodeCount(respQ.GetValue())

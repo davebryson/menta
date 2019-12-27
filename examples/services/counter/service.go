@@ -1,8 +1,6 @@
 package counter
 
 import (
-	fmt "fmt"
-
 	sdk "github.com/davebryson/menta/types"
 	"github.com/gogo/protobuf/proto"
 )
@@ -38,7 +36,6 @@ func (srv Service) Execute(sender []byte, msgid uint32, message []byte, store sd
 
 // Query committed state for the given used. Key is the public key bytes
 func (srv Service) Query(key []byte, store sdk.Snapshot) sdk.Result {
-	fmt.Println("IN service.query")
 	schema := NewQuerySchema(store)
 	return schema.GetCountByKey(key)
 }
@@ -102,7 +99,6 @@ func NewQuerySchema(store sdk.Snapshot) QuerySchema {
 }
 
 func (qs QuerySchema) GetCountByKey(k []byte) sdk.Result {
-	fmt.Println("try get")
 	val, err := qs.store.Get(k)
 	if err != nil {
 		return sdk.ResultError(1, err.Error())
