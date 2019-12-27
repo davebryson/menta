@@ -7,10 +7,10 @@ type Service interface {
 	Name() string
 	// Init is called once, on the very first run of the application.
 	// Use this to load genesis data for your service
-	Initialize(data []byte, store KVStore)
+	Initialize(data []byte, store Cache)
 	// Execute is the primary business logic of your service. This is the blockchain
 	// state transistion function
-	Execute(sender []byte, msgid uint32, message []byte, store KVStore) Result
+	Execute(sender []byte, msgid uint32, message []byte, store Cache) Result
 	// Query provides read access to storage.
-	Query(key []byte, store KVStore) Result
+	Query(key []byte, store Snapshot) Result
 }
