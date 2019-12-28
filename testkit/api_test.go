@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// *** NOTE: THIS TEST WILL CONFLICT WITH APP NODE_TEST YOU SHOULD TEST FROM DIR ***/
+
 // director for tendermint configuration
 const testdir = "./sample"
 

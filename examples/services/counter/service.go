@@ -11,7 +11,7 @@ const ServiceName = "counter_example"
 var _ sdk.Service = (*Service)(nil)
 
 // Service is a simple service to demonstrate
-// the menta API.  It stores an counter for each tx.sender
+// the menta API.  It stores a counter for each tx.sender
 type Service struct{}
 
 // Name is a unique name used to register the service
@@ -40,6 +40,7 @@ func (srv Service) Query(key []byte, store sdk.Snapshot) sdk.Result {
 	return schema.GetCountByKey(key)
 }
 
+// Schema wraps a prefixed store for our service
 type Schema struct {
 	store sdk.PrefixedKVStore
 }
@@ -50,6 +51,7 @@ func NewSchema(store sdk.Cache) Schema {
 	}
 }
 
+// IncrementCount is the core logic for a tx
 func (schema Schema) IncrementCount(sender []byte, msg Increment) sdk.Result {
 	storeVal, err := schema.store.Get(sender)
 	if err != nil {
@@ -88,6 +90,8 @@ func (schema Schema) IncrementCount(sender []byte, msg Increment) sdk.Result {
 	}
 }
 
+// QuerySchema is really overkill for this example, but it's here for demo purposes
+// It provides a Prefixed wrapper to a snapshot of the state store
 type QuerySchema struct {
 	store sdk.PrefixedSnapshot
 }
@@ -109,7 +113,7 @@ func (qs QuerySchema) GetCountByKey(k []byte) sdk.Result {
 	}
 }
 
-// --- Augment proto types ---
+// --- Augment proto types for simplicity ---
 
 // Encode the Increment message
 func (inc *Increment) Encode() ([]byte, error) {
