@@ -13,6 +13,7 @@ import (
 
 var chainIdPrefix = "menta-chain-%v"
 
+// InitTendermint creates the initial configuration information if it doesn't exist
 func InitTendermint(homedir string) {
 	if homedir == "" {
 		homedir = DefaultHomeDir
