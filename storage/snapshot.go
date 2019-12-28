@@ -5,6 +5,7 @@ import "github.com/tendermint/iavl"
 var _ TreeReader = (*Snapshot)(nil)
 
 type Snapshot struct {
+	// TODO: Use Immutable tree
 	tree *iavl.MutableTree
 }
 

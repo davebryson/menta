@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "main")
+	//logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "state:info")
+	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 )
 
 // CreateNode creates an embedded tendermint node for standalone mode

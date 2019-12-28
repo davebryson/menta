@@ -2,7 +2,6 @@ package storage
 
 import (
 	"errors"
-	fmt "fmt"
 	"sort"
 
 	proto "github.com/golang/protobuf/proto"
@@ -50,13 +49,12 @@ func NewStore(dbdir string) *Store {
 }
 
 func (st *Store) Snapshot() TreeReader {
-	// Note: Could use immutable tree here. But not sure how have that operation is
+	// Note: Could use immutable tree here. But not sure how fast that operation is
 	return NewSnaphot(st.tree)
 }
 
 // Commit information about the current state to storage
 func (st *Store) Commit(batch map[string]CacheOp) CommitData {
-	fmt.Println("COMMIT")
 	storageKeys := make([]string, 0, len(batch))
 	for key := range batch {
 		storageKeys = append(storageKeys, key)
@@ -64,6 +62,7 @@ func (st *Store) Commit(batch map[string]CacheOp) CommitData {
 	// Sort keys for determinism (required by IAVL)
 	sort.Strings(storageKeys)
 
+	// Update tree
 	for _, key := range storageKeys {
 		data := batch[key]
 		// do delete and continue
@@ -77,15 +76,16 @@ func (st *Store) Commit(batch map[string]CacheOp) CommitData {
 		}
 	}
 
+	// Save the new version
 	hash, version, err := st.tree.SaveVersion()
 
-	// from cosmos-sdk iavlstore - Release an old version of history
+	// (from cosmos-sdk iavlstore) Release an old version of history
 	if st.numHistory > 0 && (st.numHistory < st.tree.Version()) {
 		toRelease := version - st.numHistory
 		st.tree.DeleteVersion(toRelease)
 	}
 
-	// save commit to db
+	// save commit data to db
 	com := CommitData{Version: version, Hash: hash}
 	bits, err := proto.Marshal(&com)
 	if err != nil {
@@ -97,6 +97,7 @@ func (st *Store) Commit(batch map[string]CacheOp) CommitData {
 	return com
 }
 
+// Close the DB
 func (st *Store) Close() {
 	st.db.Close()
 }
