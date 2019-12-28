@@ -3,7 +3,7 @@
 package app
 
 import (
-	"github.com/davebryson/menta/store"
+	"github.com/davebryson/menta/storage"
 	sdk "github.com/davebryson/menta/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -13,11 +13,11 @@ var _ abci.Application = (*MentaApp)(nil)
 
 // MentaApp contains all the basics needed to build a tendermint application
 type MentaApp struct {
-	name         string
-	state        *store.StateStore
-	deliverCache *store.KVCache
-	Config       *cfg.Config
-	router       map[string]sdk.Service
+	name   string
+	store  *storage.Store
+	cache  *storage.KVCache
+	Config *cfg.Config
+	router map[string]sdk.Service
 }
 
 // NewApp returns a new instance of MentaApp where appname is the name of
@@ -29,13 +29,13 @@ func NewApp(appname, homedir string) *MentaApp {
 		panic(err)
 	}
 
-	state := store.NewStateStore(config.DBDir())
+	store := storage.NewStore(config.DBDir())
 	return &MentaApp{
-		name:         appname,
-		state:        state,
-		Config:       config,
-		deliverCache: state.RefreshCache().(*store.KVCache),
-		router:       make(map[string]sdk.Service, 0),
+		name:   appname,
+		store:  store,
+		Config: config,
+		cache:  storage.NewCache(store.Snapshot()),
+		router: make(map[string]sdk.Service, 0),
 	}
 }
 
@@ -43,12 +43,12 @@ func NewApp(appname, homedir string) *MentaApp {
 // without a full blown node and an in memory state tree
 func NewMockApp() *MentaApp {
 	// Returns a inmemory app without tendermint for testing
-	state := store.NewStateStore("")
+	store := storage.NewStore("")
 	return &MentaApp{
-		name:         "mockapp",
-		state:        state,
-		deliverCache: state.RefreshCache().(*store.KVCache),
-		router:       make(map[string]sdk.Service, 0),
+		name:   "mockapp",
+		store:  store,
+		cache:  storage.NewCache(store.Snapshot()),
+		router: make(map[string]sdk.Service, 0),
 	}
 }
 
@@ -78,7 +78,7 @@ func (app *MentaApp) runTx(rawtx []byte, isCheck bool) sdk.Result {
 	}
 
 	service := app.router[tx.Service]
-	return service.Execute(tx.Sender, tx.Msgid, tx.Msg, app.deliverCache)
+	return service.Execute(tx.Sender, tx.Msgid, tx.Msg, app.cache)
 }
 
 // ---------------------------------------------------------------
@@ -92,7 +92,7 @@ func (app *MentaApp) InitChain(req abci.RequestInitChain) (resp abci.ResponseIni
 	data := req.GetAppStateBytes()
 	for _, serv := range app.router {
 		// call initialize on each service
-		serv.Initialize(data, app.deliverCache)
+		serv.Initialize(data, app.cache)
 	}
 	return
 }
@@ -105,8 +105,8 @@ func (app *MentaApp) Info(req abci.RequestInfo) abci.ResponseInfo {
 	return abci.ResponseInfo{
 		Data:             app.name,
 		Version:          tmversion,
-		LastBlockHeight:  app.state.CommitInfo.Version,
-		LastBlockAppHash: app.state.CommitInfo.Hash,
+		LastBlockHeight:  app.store.CommitInfo.Version,
+		LastBlockAppHash: app.store.CommitInfo.Hash,
 	}
 }
 
@@ -131,7 +131,7 @@ func (app *MentaApp) Query(query abci.RequestQuery) abci.ResponseQuery {
 		return res
 	}
 
-	result := service.Query(queryKey, app.deliverCache)
+	result := service.Query(queryKey, app.store.Snapshot())
 
 	res.Code = result.Code
 	res.Value = result.Data
@@ -177,12 +177,8 @@ func (app *MentaApp) EndBlock(req abci.RequestEndBlock) (resp abci.ResponseEndBl
 
 // Commit to state tree, refresh caches
 func (app *MentaApp) Commit() abci.ResponseCommit {
-	app.deliverCache.ApplyToState()
-
-	commitresults := app.state.Commit()
-
-	app.deliverCache = app.state.RefreshCache().(*store.KVCache)
-
+	commitresults := app.store.Commit(app.cache.ToBatch())
+	app.cache = storage.NewCache(app.store.Snapshot())
 	return abci.ResponseCommit{Data: commitresults.Hash}
 }
 

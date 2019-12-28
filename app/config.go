@@ -11,12 +11,16 @@ import (
 )
 
 const (
+	// MENTAHOME is the default dir for tendermint configuration
 	MENTAHOME = ".menta"
-	Home      = "home"
+	// Home is for viper configuration
+	Home = "home"
 )
 
+// DefaultHomeDir for tendermint config
 var DefaultHomeDir = os.ExpandEnv(fmt.Sprintf("$HOME/%s", MENTAHOME))
 
+// LoadConfig using tendermint config
 func LoadConfig(homedir string) (*cfg.Config, error) {
 	if homedir == "" {
 		homedir = DefaultHomeDir

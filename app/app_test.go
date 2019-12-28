@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/davebryson/menta/examples/services/counter"
@@ -63,7 +62,6 @@ func TestAppCallbacks(t *testing.T) {
 
 	// Now committed state should == 1
 	respQ = app.Query(abci.RequestQuery{Path: counter.ServiceName, Data: alice.PubKey()})
-	fmt.Printf("%v", respQ)
 	assert.Equal(uint32(0), respQ.Code)
 
 	count, err := counter.DecodeCount(respQ.GetValue())

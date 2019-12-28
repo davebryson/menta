@@ -11,18 +11,18 @@ const ServiceName = "counter_example"
 var _ sdk.Service = (*Service)(nil)
 
 // Service is a simple service to demonstrate
-// the menta API.  It stores an counter for each tx.sender
+// the menta API.  It stores a counter for each tx.sender
 type Service struct{}
 
 // Name is a unique name used to register the service
 func (srv Service) Name() string { return ServiceName }
 
 // Initialize is called on the genesis block.  Not used
-func (srv Service) Initialize(data []byte, store sdk.KVStore) {
+func (srv Service) Initialize(data []byte, store sdk.Cache) {
 }
 
 // Execute runs the core logic for a state transition
-func (srv Service) Execute(sender []byte, msgid uint32, message []byte, store sdk.KVStore) sdk.Result {
+func (srv Service) Execute(sender []byte, msgid uint32, message []byte, store sdk.Cache) sdk.Result {
 	// Decode the incoming msg in the Tx
 	var msg Increment
 	err := proto.Unmarshal(message, &msg)
@@ -35,21 +35,23 @@ func (srv Service) Execute(sender []byte, msgid uint32, message []byte, store sd
 }
 
 // Query committed state for the given used. Key is the public key bytes
-func (srv Service) Query(key []byte, store sdk.KVStore) sdk.Result {
-	schema := NewSchema(store)
-	return schema.Query(key)
+func (srv Service) Query(key []byte, store sdk.Snapshot) sdk.Result {
+	schema := NewQuerySchema(store)
+	return schema.GetCountByKey(key)
 }
 
+// Schema wraps a prefixed store for our service
 type Schema struct {
-	store sdk.NamedStore
+	store sdk.PrefixedKVStore
 }
 
-func NewSchema(store sdk.KVStore) Schema {
+func NewSchema(store sdk.Cache) Schema {
 	return Schema{
-		store: sdk.NewNamedStore(ServiceName, store),
+		store: sdk.NewPrefixedKVStore(ServiceName, store),
 	}
 }
 
+// IncrementCount is the core logic for a tx
 func (schema Schema) IncrementCount(sender []byte, msg Increment) sdk.Result {
 	storeVal, err := schema.store.Get(sender)
 	if err != nil {
@@ -88,8 +90,20 @@ func (schema Schema) IncrementCount(sender []byte, msg Increment) sdk.Result {
 	}
 }
 
-func (schema Schema) Query(key []byte) sdk.Result {
-	val, err := schema.store.Query(key)
+// QuerySchema is really overkill for this example, but it's here for demo purposes
+// It provides a Prefixed wrapper to a snapshot of the state store
+type QuerySchema struct {
+	store sdk.PrefixedSnapshot
+}
+
+func NewQuerySchema(store sdk.Snapshot) QuerySchema {
+	return QuerySchema{
+		store: sdk.NewPrefixedSnapshot(ServiceName, store),
+	}
+}
+
+func (qs QuerySchema) GetCountByKey(k []byte) sdk.Result {
+	val, err := qs.store.Get(k)
 	if err != nil {
 		return sdk.ResultError(1, err.Error())
 	}
@@ -99,7 +113,7 @@ func (schema Schema) Query(key []byte) sdk.Result {
 	}
 }
 
-// --- Augment proto types ---
+// --- Augment proto types for simplicity ---
 
 // Encode the Increment message
 func (inc *Increment) Encode() ([]byte, error) {

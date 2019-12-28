@@ -3,33 +3,39 @@ package types
 import (
 	"errors"
 
-	"github.com/davebryson/menta/store"
+	"github.com/davebryson/menta/storage"
 )
 
 // KVStore re-exported for the sdk
-type KVStore = store.KVStore
+type (
+	Snapshot = storage.TreeReader
+	Cache    = storage.Cache
+)
 
-// NamedStore is used to provide scoped, read/write access to storage.
-// Keys in the store are automatically prefixed with the given prefix name.
-type NamedStore struct {
-	prefix []byte
-	store  KVStore
+func PrefixedKey(service, key []byte) []byte {
+	res := make([]byte, len(service)+len(key))
+	copy(res, service)
+	copy(res[len(service):], key)
+	return res
 }
 
-// NewNamedStore creates an instance
-func NewNamedStore(serviceName string, store KVStore) NamedStore {
-	return NamedStore{
-		prefix: []byte(serviceName),
+type PrefixedKVStore struct {
+	prefix []byte
+	store  Cache
+}
+
+func NewPrefixedKVStore(prefix string, store Cache) PrefixedKVStore {
+	return PrefixedKVStore{
+		prefix: []byte(prefix),
 		store:  store,
 	}
 }
 
-func (ps NamedStore) key(key []byte) []byte {
-	return prefixKey(ps.prefix, key)
+func (ps PrefixedKVStore) key(k []byte) []byte {
+	return PrefixedKey(ps.prefix, k)
 }
 
-// Get something from the store by key
-func (ps NamedStore) Get(key []byte) ([]byte, error) {
+func (ps PrefixedKVStore) Get(key []byte) ([]byte, error) {
 	data, err := ps.store.Get(ps.key(key))
 	if err != nil {
 		return nil, err
@@ -37,42 +43,38 @@ func (ps NamedStore) Get(key []byte) ([]byte, error) {
 	return data, nil
 }
 
-// Query a value by key from committed state
-func (ps NamedStore) Query(key []byte) ([]byte, error) {
-	data, err := ps.store.GetCommitted(ps.key(key))
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-
-// Has : does the store contain the given key?
-func (ps NamedStore) Has(key []byte) bool {
+func (ps PrefixedKVStore) Has(key []byte) bool {
 	_, err := ps.Get(key)
 	return err == nil
 }
 
-// Put a key/value into the store
-func (ps NamedStore) Put(key, value []byte) error {
+func (ps PrefixedKVStore) Put(key, value []byte) error {
 	if key == nil {
-		return errors.New("PrefixStore: Key is nil")
+		return errors.New("PrefixKVStore: Key is nil")
 	}
 	if value == nil {
-		return errors.New("PrefixStore: Value is nil")
+		return errors.New("PrefixKVStore: Value is nil")
 	}
-	ps.store.Set(ps.key(key), value)
+	ps.store.Put(ps.key(key), value)
 	return nil
 }
 
-// Delete a key/value from the store
-func (ps NamedStore) Delete(key []byte) {
-	ps.store.Delete(ps.key(key))
+func (ps PrefixedKVStore) Remove(key []byte) {
+	ps.store.Remove(ps.key(key))
 }
 
-// generate a prefixed key
-func prefixKey(service, key []byte) []byte {
-	res := make([]byte, len(service)+len(key))
-	copy(res, service)
-	copy(res[len(service):], key)
-	return res
+type PrefixedSnapshot struct {
+	prefix []byte
+	store  Snapshot
+}
+
+func NewPrefixedSnapshot(prefix string, snapshot Snapshot) PrefixedSnapshot {
+	return PrefixedSnapshot{
+		prefix: []byte(prefix),
+		store:  snapshot,
+	}
+}
+
+func (ps PrefixedSnapshot) Get(key []byte) ([]byte, error) {
+	return ps.store.Get(PrefixedKey(ps.prefix, key))
 }
