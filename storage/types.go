@@ -1,9 +1,13 @@
 package storage
 
+import "github.com/tendermint/iavl"
+
 // TreeReader provides read access to committed state
 type TreeReader interface {
 	// Get from committed state in the tree
 	Get(key []byte) ([]byte, error)
+	// GetWithProof returns the value with a Proof
+	GetWithProof(key []byte) ([]byte, *iavl.RangeProof, error)
 	// IterateKeyRange over committed state
 	IterateKeyRange(start, end []byte, ascending bool, fn func(key []byte, value []byte) bool) bool
 }

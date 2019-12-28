@@ -2,6 +2,7 @@ package storage
 
 var _ Cache = (*KVCache)(nil)
 
+// CacheOp operation (make this private)
 type CacheOp struct {
 	value  []byte
 	dirty  bool

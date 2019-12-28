@@ -55,6 +55,18 @@ func TestStoreBasics(t *testing.T) {
 	_, err = st.Snapshot().Get([]byte("d"))
 	assert.NotNil(err)
 
+	// Check the proof
+	root := st.LatestRootHash()
+	value, proof, err := st.Snapshot().GetWithProof([]byte("b"))
+	assert.Nil(err)
+	assert.NotNil(proof)
+	err = proof.Verify(root)
+	assert.Nil(err)
+	err = proof.VerifyItem([]byte("b"), value)
+	assert.Nil(err)
+	err = proof.VerifyItem([]byte("c"), []byte("nope!"))
+	assert.NotNil(err)
+
 	st.Close()
 }
 

@@ -48,9 +48,15 @@ func NewStore(dbdir string) *Store {
 	}
 }
 
+// Snapshot returns a read-only view of committed state
 func (st *Store) Snapshot() TreeReader {
 	// Note: Could use immutable tree here. But not sure how fast that operation is
-	return NewSnaphot(st.tree)
+	return NewSnapshot(st.tree)
+}
+
+// LatestRootHash returns the current roothash of the committed tree
+func (st *Store) LatestRootHash() []byte {
+	return st.tree.WorkingHash()
 }
 
 // Commit information about the current state to storage
