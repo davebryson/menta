@@ -1,6 +1,6 @@
 package storage
 
-import "github.com/tendermint/iavl"
+import "github.com/cosmos/iavl"
 
 var _ TreeReader = (*Snapshot)(nil)
 

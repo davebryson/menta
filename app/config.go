@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/viper"
 	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
 const (
@@ -26,7 +26,7 @@ func LoadConfig(homedir string) (*cfg.Config, error) {
 		homedir = DefaultHomeDir
 	}
 
-	if !cmn.FileExists(filepath.Join(homedir, "config", "config.toml")) {
+	if !tmos.FileExists(filepath.Join(homedir, "config", "config.toml")) {
 		return nil, fmt.Errorf("Missing homedir! Did you run the init command?")
 	}
 

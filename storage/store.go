@@ -2,12 +2,13 @@ package storage
 
 import (
 	"errors"
+	fmt "fmt"
 	"sort"
 
 	proto "github.com/golang/protobuf/proto"
 
-	"github.com/tendermint/iavl"
-	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/cosmos/iavl"
+	dbm "github.com/tendermint/tm-db"
 )
 
 const (
@@ -35,9 +36,17 @@ type Store struct {
 // NewStore creates a new instance.  If 'dbdir' == "", it'll
 // return an in-memory database
 func NewStore(dbdir string) *Store {
-	db := loadDb(dbdir)
+	db, err := loadDb(dbdir)
+	if err != nil {
+		panic(err)
+	}
+
 	ci := loadCommitData(db)
-	tree := iavl.NewMutableTree(db, cacheSize)
+	tree, err := iavl.NewMutableTree(db, cacheSize)
+	if err != nil {
+		panic(err)
+	}
+
 	tree.LoadVersion(ci.Version)
 
 	return &Store{
@@ -85,6 +94,8 @@ func (st *Store) Commit(batch map[string]CacheOp) CommitData {
 	// Save the new version
 	hash, version, err := st.tree.SaveVersion()
 
+	fmt.Printf("Version: %v  Hash: %v\n", version, hash)
+
 	// (from cosmos-sdk iavlstore) Release an old version of history
 	if st.numHistory > 0 && (st.numHistory < st.tree.Version()) {
 		toRelease := version - st.numHistory
@@ -110,7 +121,7 @@ func (st *Store) Close() {
 
 // LoadCommitData from the db
 func loadCommitData(db dbm.DB) CommitData {
-	commitBytes := db.Get(commitKey)
+	commitBytes, _ := db.Get(commitKey)
 	var ci CommitData
 	if commitBytes != nil {
 		err := proto.Unmarshal(commitBytes, &ci)
@@ -122,9 +133,9 @@ func loadCommitData(db dbm.DB) CommitData {
 }
 
 // load the db
-func loadDb(dbdir string) dbm.DB {
+func loadDb(dbdir string) (dbm.DB, error) {
 	if dbdir == "" {
-		return dbm.NewMemDB()
+		return dbm.NewMemDB(), nil
 	}
 	return dbm.NewDB(StateDbName, dbm.GoLevelDBBackend, dbdir)
 }

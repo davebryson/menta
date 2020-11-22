@@ -4,7 +4,8 @@ import (
 	"fmt"
 
 	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
@@ -39,7 +40,7 @@ func createConfig(homedir string) error {
 	privValKeyFile := config.PrivValidatorKeyFile()
 	privValStateFile := config.PrivValidatorStateFile()
 	var pv *privval.FilePV
-	if cmn.FileExists(privValKeyFile) {
+	if os.FileExists(privValKeyFile) {
 		pv = privval.LoadFilePV(privValKeyFile, privValStateFile)
 		logger.Info("Found private validator", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
@@ -51,7 +52,7 @@ func createConfig(homedir string) error {
 	}
 
 	nodeKeyFile := config.NodeKeyFile()
-	if cmn.FileExists(nodeKeyFile) {
+	if os.FileExists(nodeKeyFile) {
 		logger.Info("Found node key", "path", nodeKeyFile)
 	} else {
 		if _, err := p2p.LoadOrGenNodeKey(nodeKeyFile); err != nil {
@@ -62,15 +63,16 @@ func createConfig(homedir string) error {
 
 	// genesis file
 	genFile := config.GenesisFile()
-	if cmn.FileExists(genFile) {
+	if os.FileExists(genFile) {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
 		genDoc := types.GenesisDoc{
-			ChainID:         fmt.Sprintf(chainIdPrefix, cmn.RandStr(6)),
+			ChainID:         fmt.Sprintf(chainIdPrefix, rand.Str(6)),
 			GenesisTime:     tmtime.Now(),
 			ConsensusParams: types.DefaultConsensusParams(),
 		}
-		key := pv.GetPubKey()
+		// TODO: Handle err here
+		key, _ := pv.GetPubKey()
 		genDoc.Validators = []types.GenesisValidator{{
 			Address: key.Address(),
 			PubKey:  key,

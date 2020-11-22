@@ -35,7 +35,7 @@ func TestAppCallbacks(t *testing.T) {
 	// block height should be 1 because we committed
 	assert.Equal(int64(1), result.GetLastBlockHeight())
 	hash1 := result.GetLastBlockAppHash()
-	assert.Nil(hash1)
+	assert.NotNil(hash1)
 	// Should == the first commit hash
 	assert.Equal(c1.Data, hash1)
 

@@ -187,6 +187,22 @@ func (app *MentaApp) SetOption(req abci.RequestSetOption) abci.ResponseSetOption
 	return abci.ResponseSetOption{}
 }
 
+func (app *MentaApp) ListSnapshots(req abci.RequestListSnapshots) abci.ResponseListSnapshots {
+	return abci.ResponseListSnapshots{}
+}
+
+func (app *MentaApp) OfferSnapshot(req abci.RequestOfferSnapshot) abci.ResponseOfferSnapshot {
+	return abci.ResponseOfferSnapshot{}
+}
+
+func (app *MentaApp) LoadSnapshotChunk(req abci.RequestLoadSnapshotChunk) abci.ResponseLoadSnapshotChunk {
+	return abci.ResponseLoadSnapshotChunk{}
+}
+
+func (app *MentaApp) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) abci.ResponseApplySnapshotChunk {
+	return abci.ResponseApplySnapshotChunk{}
+}
+
 func validateForCheckTx(tx *sdk.SignedTransaction) sdk.Result {
 	if tx.Verify() {
 		return sdk.Result{}

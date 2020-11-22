@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,7 +10,7 @@ import (
 
 	menta "github.com/davebryson/menta/app"
 	"github.com/davebryson/menta/examples/services/counter"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	rpcclient "github.com/tendermint/tendermint/rpc/client/http"
 	"github.com/urfave/cli"
 )
 
@@ -39,8 +40,8 @@ func RunApp() {
 
 func queryCounter() {
 	alice := counter.WalletFromSeed(aliceWallet)
-	client := rpcclient.NewHTTP(rpcAddr, "/websocket")
-	result, err := client.ABCIQuery(counter.ServiceName, alice.PubKey())
+	client, _ := rpcclient.New(rpcAddr, "/websocket")
+	result, err := client.ABCIQuery(context.Background(), counter.ServiceName, alice.PubKey())
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -62,8 +63,8 @@ func sendTransaction(val uint32) {
 		return
 	}
 
-	client := rpcclient.NewHTTP(rpcAddr, "/websocket")
-	result, err := client.BroadcastTxCommit(txbits)
+	client, _ := rpcclient.New(rpcAddr, "/websocket")
+	result, err := client.BroadcastTxCommit(context.Background(), txbits)
 	if err != nil {
 		fmt.Println(err)
 		return

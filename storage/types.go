@@ -1,6 +1,6 @@
 package storage
 
-import "github.com/tendermint/iavl"
+import "github.com/cosmos/iavl"
 
 // TreeReader provides read access to committed state
 type TreeReader interface {

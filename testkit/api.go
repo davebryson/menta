@@ -1,11 +1,12 @@
 package testkit
 
 import (
+	"context"
 	"time"
 
 	menta "github.com/davebryson/menta/app"
 	sdk "github.com/davebryson/menta/types"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	rpcclient "github.com/tendermint/tendermint/rpc/client/http"
 	core_types "github.com/tendermint/tendermint/rpc/core/types"
 )
 
@@ -28,9 +29,13 @@ func NewTestKit(homedir string, service sdk.Service) TestKit {
 	menta.InitTendermint(homedir)
 	app := menta.NewApp("testkit", homedir)
 	app.AddService(service)
+	c, err := rpcclient.New(rpcAddr, "/websocket")
+	if err != nil {
+		panic(err)
+	}
 	return TestKit{
 		app:         app,
-		client:      rpcclient.NewHTTP(rpcAddr, "/websocket"),
+		client:      c,
 		serviceName: service.Name(),
 		homedir:     homedir,
 	}
@@ -48,15 +53,15 @@ func (tk TestKit) Launch() {
 // Query your service for the given key. The key should match what's
 // expected when you implemented service.Query(...)
 func (tk TestKit) Query(key []byte) (*core_types.ResultABCIQuery, error) {
-	return tk.client.ABCIQuery(tk.serviceName, key)
+	return tk.client.ABCIQuery(context.Background(), tk.serviceName, key)
 }
 
 // SendTxCommit sends a transaction and waits for it to be committed
 func (tk TestKit) SendTxCommit(txencoded []byte) (*core_types.ResultBroadcastTxCommit, error) {
-	return tk.client.BroadcastTxCommit(txencoded)
+	return tk.client.BroadcastTxCommit(context.Background(), txencoded)
 }
 
 // SendTxAsync can be used to send several transactions at once.  It doesn't wait for commit
 func (tk TestKit) SendTxAsync(txencoded []byte) (*core_types.ResultBroadcastTx, error) {
-	return tk.client.BroadcastTxAsync(txencoded)
+	return tk.client.BroadcastTxAsync(context.Background(), txencoded)
 }

@@ -1,9 +1,6 @@
 package types
 
 // Helper for returning results from check/deliver calls
-import (
-	cmn "github.com/tendermint/tendermint/libs/common"
-)
 
 const (
 	// OK - all is bueno with the executed Tx. Any non-zero code is an error
@@ -25,12 +22,6 @@ type Result struct {
 	Data []byte
 	Log  string
 }
-
-// Tag defined in tendermint ... common/types.proto
-type Tag = cmn.KVPair
-
-// Tags defined in tendermint ... common/kvpairs.go = []cmn.KVPairs
-type Tags cmn.KVPairs
 
 // ResultError is returned on an error with a non-zero code
 func ResultError(code uint32, log string) Result {
